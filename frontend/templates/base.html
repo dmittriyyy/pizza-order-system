@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza Platform</title>
+    <link rel="stylesheet" href="/static/css/styleBase.css">
+</head>
+<body>
+    <header>
+        <h1>🍕 Pizza Platform</h1>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/menu">Меню</a>
+            <a href="/about">О нас</a>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="hero">
+            <h2>Добро пожаловать в лучшую пиццерию!</h2>
+            <p>Закажите вкуснейшую пиццу с доставкой на дом</p>
+            <button onclick="orderPizza()">Заказать сейчас</button>
+        </section>
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Pizza Platform. Все права защищены.</p>
+    </footer>
+    
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
