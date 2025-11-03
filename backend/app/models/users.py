@@ -25,7 +25,7 @@ class User(Base):
     last_name = Column(String, nullable=True)
     login = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
-    email = Column(String,nullable=True,unique=True) # сюда потом добавить функцию валидации
+    email = Column(String,nullable=True,unique=True) 
     role = Column(Enum(UserRole), nullable=False, index=True)
     status = Column(Enum(UserStatus), default=UserStatus.active, nullable=True)
 
