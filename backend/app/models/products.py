@@ -9,7 +9,7 @@ class Product(Base):
     id = Column(Integer, primary_key= True, index= True)
     name = Column(String, nullable= False)
     description = Column(String)
-    slug = Column(String, unique=True,nullable = False, index = True)
+    slug = Column(String, unique=True,nullable = False)
     price = Column(float, nullable= False, index = True)
     image_url = Column(String)
     created_at = Column(DateTime, default = datetime.utcnow)
