@@ -24,3 +24,23 @@ class ProductService:
             )
         return ProductResponse.model_validate(product)
     
+    def get_product_by_category(self, category_id: int) -> ProductListResponse:
+        category = self.category_repository.get_by_id(category_id)
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with id {category_id} not found"
+            )
+        products = self.repository.get_by_category_id(category_id)
+        products_response = [ProductResponse.model_validate(prod) for prod in products]
+        return ProductListResponse(products = products_response, total = len(products_response))
+    
+    def create_product(self, product_data: ProductCreate) -> ProductResponse:
+        category = self.category_repository.get_by_id(product_data.category_id)
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with id {product_data.category_id} not found"
+            )
+        new_product = self.repository.create(product_data)
+        return ProductResponse.model_validate(new_product)
