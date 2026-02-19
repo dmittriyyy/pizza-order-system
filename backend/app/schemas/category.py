@@ -11,4 +11,4 @@ class CategoryResponse(CategoryBase):
     id: int = Field(...,description="Uniqie category identiffier")
 
     class Config:
-        from_attributes = True
+        from_attributes = True # чтобы превращать объект SQLAlchemy в JSON
