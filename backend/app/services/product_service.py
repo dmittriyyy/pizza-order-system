@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from repositories.product_repository import ProductRepository
-from schemas.product import ProductResponse, ProductCreate, ProductUpdate, ProductListResponse
-from repositories.category_repository import CategoryRepository
+from ..schemas.product import ProductResponse, ProductCreate, ProductListResponse
 from fastapi import HTTPException, status
+from ..repositories.product_repository import ProductRepository
+from ..repositories.category_repository import CategoryRepository
 
 class ProductService:
     def __init__(self, db: Session):

@@ -1,33 +1,54 @@
 import os
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from starlette.responses import FileResponse
-
+from .config import settings
+from .routes import products_router, cart_router, categories_router
+from .database import init_db
 
 app = FastAPI(
-    title="Pizza Platform API",
+    title=settings.app_name,
     description="Платформа онлайн-заказа пиццы",
     version="1.0.0", 
+    debug=settings.debug,
+    docs_url="/api//docs",
+    redoc_url="/api/redoc"
 )
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "frontend", "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "frontend", "static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins, #откуда можно принимать
+    allow_credentials=True, # разрешаем отправлять куки
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 
-@app.get("/", response_class=HTMLResponse) 
-async def home(request: Request):
-    return templates.TemplateResponse("base.html", {"request": request})
+app.include_router(products_router)
+app.include_router(cart_router)
+app.include_router(categories_router)
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+
+@app.get("/") 
+def root():
+    return {
+        "message": "Welcome to the Pizza Platform API!",
+        "docs": "/api/docs",}
+
+@app.get('/health')
+def health_check():
+    return {"status": "healthy"}
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app", 
+        "app.main:app", 
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=settings.debug,
+        log_level='info'
     )

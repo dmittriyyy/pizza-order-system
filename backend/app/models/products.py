@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from ..database import Base
 from datetime import datetime
@@ -10,7 +10,7 @@ class Product(Base):
     name = Column(String, nullable= False)
     description = Column(String)
     slug = Column(String, unique=True,nullable = False)
-    price = Column(float, nullable= False, index = True)
+    price = Column(Float, nullable= False, index = True)
     image_url = Column(String)
     created_at = Column(DateTime, default = datetime.utcnow)
 

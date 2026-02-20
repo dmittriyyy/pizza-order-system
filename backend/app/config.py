@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     app_name: str = "Pizza Platform API"
     debug: bool = True
-    database_url : str = "sqllite: ///./pizza.db"
+    database_url : str = "sqlite:///./pizza.db"
     cors_origins : list = [
         "http://localhost:5173",
         "http://localhost:5173",
