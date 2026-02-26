@@ -21,7 +21,7 @@ class ProductResponse(BaseModel):
     price: float
     category_id: int 
     image_url: Optional[str]
-    created_ad: datetime
+    created_at: datetime
     category: CategoryResponse = Field(...,description="Product category")
 
     class Config:

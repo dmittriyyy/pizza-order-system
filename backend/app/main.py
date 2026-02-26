@@ -12,7 +12,7 @@ app = FastAPI(
     description="Платформа онлайн-заказа пиццы",
     version="1.0.0", 
     debug=settings.debug,
-    docs_url="/api//docs",
+    docs_url="/api/docs",
     redoc_url="/api/redoc"
 )
 
