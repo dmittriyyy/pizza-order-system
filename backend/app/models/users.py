@@ -1,6 +1,6 @@
-import re
-from sqlalchemy import Column, Integer, String, DateTime, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Enum 
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 from ..database import Base
 
@@ -28,8 +28,10 @@ class User(Base):
     email = Column(String,nullable=True,unique=True) 
     role = Column(Enum(UserRole), nullable=False, index=True)
     status = Column(Enum(UserStatus), default=UserStatus.active, nullable=True)
-
     registered_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    orders = relationship("Order", back_populates="user")
+    cart = relationship("Cart", back_populates="user", uselist=False)
 
     def __repr__(self):
         return f"<User(id={self.id}, login='{self.login}', role='{self.role.value}', status='{self.status.value}')>"

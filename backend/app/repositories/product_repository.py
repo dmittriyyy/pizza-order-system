@@ -37,6 +37,6 @@ class ProductRepository:
         return (
             self.db.query(Product)
             .options(joinedload(Product.category))
-            .filter(Product.id.in_(product_ids)) # in_() - должен соответствовать любому из переданных ID
+            .filter(Product.id.in_(product_ids))
             .all()
         )
