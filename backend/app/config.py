@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "Pizza Platform API"
+    app_name: str = "Piazza Pizza API"
     debug: bool = True
 
     database_url: str = "sqlite:///./pizza.db"
@@ -17,12 +17,14 @@ class Settings(BaseSettings):
     static_dir: str = "static"
     images_dir: str = "static/images"
 
-    SECRET_KEY: str = "dimylllik_diplom_project_secret_key_127756710NASD..askda..a."
+    SECRET_KEY: str = "super-secret-pizza-key-change-in-production-abc123xyz"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+
     class Config:
         env_file = ".env"
+        extra = "ignore" 
 
 
 settings = Settings()

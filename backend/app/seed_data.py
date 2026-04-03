@@ -6,13 +6,12 @@ from app.services.auth_service import get_password_hash
 import json
 
 def seed_data():
-    # Полная очистка и создание таблиц
+
     Base.metadata.drop_all(bind=engine)
     init_db()
 
     db = SessionLocal()
     try:
-        # --- 1. КАТЕГОРИИ ---
         categories_data = {
             "pizza": Category(name="Пицца", slug="pizza"),
             "burgers": Category(name="Бургеры", slug="burgers"),
@@ -22,7 +21,6 @@ def seed_data():
         db.add_all(categories_data.values())
         db.commit()
 
-        # --- 2. ПРОДУКТЫ с фото, калориями и составом ---
         products_list = [
             # Пицца
             Product(
@@ -199,13 +197,52 @@ def seed_data():
         ]
         db.add_all(products_list)
 
-        # --- 3. ПОЛЬЗОВАТЕЛИ с хешированными паролями ---
+        # --- 3. ПОЛЬЗОВАТЕЛИ с хешированными паролями и контактными данными ---
         users_list = [
-            User(first_name="Артём", last_name="Админов", login="admin_boss", password_hash=get_password_hash("pass_1"), role=UserRole.admin, email="admin@pizza.ru"),
-            User(first_name="Мария", last_name="Кондитер", login="cook_maria", password_hash=get_password_hash("pass_2"), role=UserRole.cook),
-            User(first_name="Виктор", last_name="Быстрый", login="courier_vic", password_hash=get_password_hash("pass_3"), role=UserRole.courier),
-            User(first_name="Игорь", last_name="Клиент", login="user_igor", password_hash=get_password_hash("pass_4"), role=UserRole.client, status=UserStatus.active),
-            User(first_name="Анна", last_name="Новичок", login="user_anna", password_hash=get_password_hash("pass_5"), role=UserRole.client, status=UserStatus.active),
+            User(
+                first_name="Артём",
+                last_name="Админов",
+                login="admin_boss",
+                password_hash=get_password_hash("pass_1"),
+                role=UserRole.admin,
+                email="admin@pizza.ru",
+                phone="+7 (999) 000-00-01",
+                telegram="@admin_boss",
+                default_address="ул. Ленина, д. 1, оф. 100"
+            ),
+            User(
+                first_name="Мария",
+                last_name="Кондитер",
+                login="cook_maria",
+                password_hash=get_password_hash("pass_2"),
+                role=UserRole.cook,
+                email="cook@pizza.ru",
+                phone="+7 (999) 000-00-02",
+                telegram="@cook_maria",
+                default_address="ул. Поварская, д. 5, кв. 20"
+            ),
+            User(
+                first_name="Виктор",
+                last_name="Быстрый",
+                login="courier_vic",
+                password_hash=get_password_hash("pass_3"),
+                role=UserRole.courier,
+                email="courier@pizza.ru",
+                phone="+7 (999) 000-00-03",
+                telegram="@courier_vic",
+                default_address="ул. Курьерская, д. 10, кв. 50"
+            ),
+            User(
+                first_name="Игорь",
+                last_name="Клиент",
+                login="user_igor",
+                password_hash=get_password_hash("pass_4"),
+                role=UserRole.client,
+                email="client@pizza.ru",
+                phone="+7 (999) 000-00-04",
+                telegram="@user_igor",
+                default_address="ул. Клиентская, д. 15, кв. 75"
+            ),
         ]
         db.add_all(users_list)
 

@@ -38,7 +38,9 @@ export const useProductsStore = defineStore('products', {
       try {
         const data = await productService.getAll()
         this.products = data.products || []
+        console.log('✅ Товары загружены:', this.products.length)
       } catch (error) {
+        console.error('❌ Ошибка загрузки продуктов:', error)
         this.error = error.response?.data?.detail || 'Ошибка при загрузке продуктов'
       } finally {
         this.isLoading = false
@@ -51,7 +53,9 @@ export const useProductsStore = defineStore('products', {
       try {
         const data = await categoryService.getAll()
         this.categories = data || []
+        console.log('✅ Категории загружены:', this.categories.length)
       } catch (error) {
+        console.error('❌ Ошибка загрузки категорий:', error)
         this.error = error.response?.data?.detail || 'Ошибка при загрузке категорий'
       } finally {
         this.isLoading = false

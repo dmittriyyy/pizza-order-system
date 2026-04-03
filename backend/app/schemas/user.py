@@ -5,9 +5,9 @@ from ..models.users import UserRole
 
 class UserBase(BaseModel):
     login: str
-    email: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -20,9 +20,21 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    telegram: Optional[str] = None
+    default_address: Optional[str] = None
+
+
 class UserResponse(UserBase):
     id: int
     role: UserRole
+    phone: Optional[str] = None
+    telegram: Optional[str] = None
+    default_address: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -130,8 +130,8 @@ const handleRegister = async () => {
   try {
     await authStore.register(registerForm.value)
     router.push('/login')
-  } catch (err) {
-    error.value = err.response?.data?.detail || 'Ошибка при регистрации'
+  } catch (error) {
+    error.value = error.response?.data?.detail || 'Ошибка при регистрации'
   } finally {
     isLoading.value = false
   }

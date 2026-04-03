@@ -93,7 +93,7 @@ def update_product(product_id: int, product_data: ProductUpdate, db: Session = D
     
     update_data = product_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(product, field, value) # setattr(объект, имя_поля, значение)
+        setattr(product, field, value)
     
     db.commit()
     db.refresh(product)

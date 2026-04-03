@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .config import settings
-from .routes import products_router, cart_router, categories_router, orders_router, auth_router, products_admin_router
+from .routes import products_router, cart_router, categories_router, orders_router, auth_router, products_admin_router, auth_me_router, profile_router, admin_employees_router, chat_router
 from .database import init_db
 
 app = FastAPI(
@@ -26,7 +26,11 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 
+app.include_router(auth_me_router)
 app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(admin_employees_router)
+app.include_router(chat_router)
 app.include_router(products_router)
 app.include_router(cart_router)
 app.include_router(categories_router)

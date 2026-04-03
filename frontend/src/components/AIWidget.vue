@@ -123,24 +123,55 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
+import api from '@/services/api'
 
 const isOpen = ref(false)
 const newMessage = ref('')
 const isTyping = ref(false)
 const messagesContainer = ref(null)
+const sessionId = ref(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
 
 const messages = ref([
   {
     role: 'assistant',
-    content: 'Привет! Я твой AI-помощник по пицце 🍕 Спрашивай меня о чём угодно!',
+    content: 'Привет! Я WOKI, твой AI-помощник по пицце 🍕 Спрашивай меня о чём угодно!',
     timestamp: new Date(),
   },
 ])
 
+// Загрузка истории при открытии
+const loadHistory = async () => {
+  try {
+    const response = await api.get(`/api/chat/history?session_id=${sessionId.value}&limit=20`)
+    if (response.data.messages && response.data.messages.length > 0) {
+      messages.value = response.data.messages.map(msg => ({
+        role: 'user',
+        content: msg.message,
+        timestamp: new Date(msg.timestamp)
+      })).reduce((acc, msg, idx) => {
+        // Добавляем пару сообщение-ответ
+        if (idx % 2 === 0 && response.data.messages[idx/2]) {
+          acc.push({
+            role: 'assistant',
+            content: response.data.messages[idx/2].response,
+            timestamp: new Date(response.data.messages[idx/2].timestamp)
+          })
+        }
+        return acc
+      }, [])
+    }
+  } catch (error) {
+    console.log('История не загружена (начало новой сессии)')
+  }
+}
+
 const openChat = () => {
   isOpen.value = true
   scrollToBottom()
+  if (messages.value.length === 1) {
+    loadHistory()
+  }
 }
 
 const closeChat = () => {
@@ -171,53 +202,37 @@ const sendMessage = async () => {
   newMessage.value = ''
   scrollToBottom()
 
-  // Имитация ответа AI
+  // Отправляем в Ollama через API
   isTyping.value = true
-  
-  // Задержка 1.5 секунды как в ТЗ
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
-  const aiResponse = generateAIResponse(content)
-  
-  messages.value.push({
-    role: 'assistant',
-    content: aiResponse,
-    timestamp: new Date(),
-  })
-  
-  isTyping.value = false
-  scrollToBottom()
+
+  try {
+    const response = await api.post('/api/chat/send', {
+      message: content,
+      session_id: sessionId.value
+    }, {
+      timeout: 180000  // 180 секунд таймаут
+    })
+
+    messages.value.push({
+      role: 'assistant',
+      content: response.data.response,
+      timestamp: new Date(),
+    })
+  } catch (error) {
+    console.error('Ошибка отправки сообщения:', error)
+    messages.value.push({
+      role: 'assistant',
+      content: 'Извините, произошла ошибка. Попробуйте ещё раз.',
+      timestamp: new Date(),
+    })
+  } finally {
+    isTyping.value = false
+    scrollToBottom()
+  }
 }
 
-// Логика-заглушка для AI ответов
-const generateAIResponse = (message) => {
-  const lowerMessage = message.toLowerCase()
-  
-  if (lowerMessage.includes('пицц') || lowerMessage.includes('вкусн')) {
-    return 'Привет! Я уже изучаю наше меню, чтобы предложить тебе лучшее сочетание продуктов. Дай мне секунду... 🍕\n\nМогу порекомендовать "Четыре сыра" — это хит! Моцарелла, пармезан, чеддер и блю чиз создают невероятный вкус.'
-  }
-  
-  if (lowerMessage.includes('напитк') || lowerMessage.includes('пить')) {
-    return 'Привет! Я твой AI-помощник. Из напитков у нас есть домашний морс ягодный (0.5л) за 150₽ и холодный зелёный чай с лимоном за 120₽. Отлично дополнят пиццу! 🥤'
-  }
-  
-  if (lowerMessage.includes('десерт') || lowerMessage.includes('сладк')) {
-    return 'Привет! Я изучаю наши десерты... У нас есть классический чизкейк Нью-Йорк за 250₽ и тирамису с маскарпоне за 300₽. Оба невероятно вкусные! 🍰'
-  }
-  
-  if (lowerMessage.includes('бургер')) {
-    return 'Привет! Из бургеров рекомендую "Дабл Биф" с двумя котлетами из говядины и карамелизированным луком за 450₽. Очень сытно! 🍔'
-  }
-  
-  if (lowerMessage.includes('привет') || lowerMessage.includes('здравствуй')) {
-    return 'Привет! Я твой AI-помощник по пицце 🍕 Спрашивай меня о чём угодно в нашем меню!'
-  }
-  
-  if (lowerMessage.includes('спасиб')) {
-    return 'Пожалуйста! 😊 Обращайся, если ещё что-то понадобится. Приятного аппетита!'
-  }
-  
-  // Ответ по умолчанию
-  return 'Привет! Я твой AI-помощник. Я уже изучаю наше меню, чтобы предложить тебе лучшее сочетание продуктов. Дай мне секунду...\n\nУ нас есть отличные пиццы, бургеры, напитки и десерты. Что тебя интересует?'
-}
+onMounted(() => {
+  // Инициализация при загрузке компонента
+  console.log('🤖 AI Widget initialized')
+})
 </script>

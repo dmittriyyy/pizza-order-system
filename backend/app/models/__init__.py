@@ -5,6 +5,7 @@ from .order import Order, OrderStatus, PaymentMethod
 from .orderItem import OrderItem
 from .cart import Cart
 from .cartItem import CartItem
+from .chat_message import ChatMessage
 
 __all__ = [
     "Category",
@@ -15,5 +16,6 @@ __all__ = [
     "PaymentMethod",
     "OrderItem",
     "Cart",
-    "CartItem"
+    "CartItem",
+    "ChatMessage"
 ]

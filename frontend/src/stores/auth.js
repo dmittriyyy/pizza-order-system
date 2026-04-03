@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { authService } from '@/services'
-import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -14,6 +13,10 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => !!state.token,
     getUser: (state) => state.user,
     getToken: (state) => state.token,
+    getUserRole: (state) => state.user?.role || 'client',
+    isAdmin: (state) => state.user?.role === 'admin',
+    isCook: (state) => state.user?.role === 'cook' || state.user?.role === 'admin',
+    isCourier: (state) => state.user?.role === 'courier' || state.user?.role === 'admin',
   },
 
   actions: {
@@ -24,20 +27,42 @@ export const useAuthStore = defineStore('auth', {
         const data = await authService.login(login, password)
         this.token = data.access_token
         
-        // Получаем информацию о пользователе из токена или сохраняем логин
-        const user = {
-          login: login,
-          role: 'client' // по умолчанию, можно обновить после получения с бэкенда
-        }
+        // Получаем информацию о пользователе из бэкенда
+        const user = await this.fetchCurrentUser()
         this.setUser(user)
+        
+        console.log('✅ Вход успешен. Токен:', data.access_token.substring(0, 20) + '...')
+        console.log('✅ Пользователь:', user)
         
         return data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Ошибка при входе'
+        console.error('❌ Ошибка входа:', error)
         throw error
       } finally {
         this.isLoading = false
       }
+    },
+
+    async fetchCurrentUser() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${this.token}`
+          }
+        })
+        if (response.ok) {
+          const user = await response.json()
+          console.log('✅ Данные пользователя с сервера:', user)
+          return user
+        } else {
+          console.warn('⚠️ Не удалось получить данные пользователя, используем локальные')
+        }
+      } catch (e) {
+        console.error('❌ Ошибка при получении профиля:', e)
+      }
+      // Fallback: используем логин из формы
+      return { login: login, role: 'client' }
     },
 
     async register(userData) {
@@ -82,6 +107,23 @@ export const useAuthStore = defineStore('auth', {
         return false
       }
       return true
+    },
+
+    // Редирект по роли
+    redirectByRole() {
+      if (!this.user) return '/'
+      
+      const role = this.user.role
+      switch (role) {
+        case 'admin':
+          return '/admin'
+        case 'cook':
+          return '/cook/orders'
+        case 'courier':
+          return '/courier/orders'
+        default:
+          return '/'
+      }
     },
   },
 })

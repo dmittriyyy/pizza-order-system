@@ -7,7 +7,7 @@
           <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
             <span class="text-white text-xl">🍕</span>
           </div>
-          <span class="text-xl font-bold text-gradient">Velo Pizza</span>
+          <span class="text-xl font-bold text-gradient">Piazza Pizza</span>
         </router-link>
 
         <!-- Навигация -->
@@ -17,6 +17,16 @@
           </router-link>
           <router-link to="/about" class="text-dark-300 hover:text-primary-400 transition-colors duration-300 font-medium">
             О нас
+          </router-link>
+          <!-- Ролевые ссылки -->
+          <router-link v-if="authStore.isCook" to="/cook/orders" class="text-yellow-400 hover:text-yellow-300 transition-colors duration-300 font-medium">
+            👨‍🍳 Кухня
+          </router-link>
+          <router-link v-if="authStore.isCourier" to="/courier/orders" class="text-purple-400 hover:text-purple-300 transition-colors duration-300 font-medium">
+            🚚 Доставка
+          </router-link>
+          <router-link v-if="authStore.isAdmin" to="/admin" class="text-primary-400 hover:text-primary-300 transition-colors duration-300 font-medium">
+            ⚙️ Админка
           </router-link>
         </div>
 

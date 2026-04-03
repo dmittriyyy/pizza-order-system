@@ -94,7 +94,7 @@
         </div>
         
         <button 
-          @click="handleCheckout"
+          @click="openCheckout"
           :disabled="isCheckingOut"
           class="btn-primary w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -103,24 +103,33 @@
       </div>
     </div>
   </div>
+  
+  <!-- Модальное окно оформления заказа -->
+  <CheckoutModal
+    :is-open="isCheckoutOpen"
+    :total="Math.round(cartStore.total)"
+    @close="isCheckoutOpen = false"
+    @success="onCheckoutSuccess"
+  />
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import { orderService } from '@/services'
 import { useRouter } from 'vue-router'
+import CheckoutModal from '@/components/CheckoutModal.vue'
 
 const cartStore = useCartStore()
+const authStore = useAuthStore()
+const router = useRouter()
+const isCheckingOut = ref(false)
+const isCheckoutOpen = ref(false)
 
 // Отладка
 watch(() => cartStore.isOpen, (newVal) => {
   console.log('CartDrawer: isOpen =', newVal)
 }, { immediate: true })
-const authStore = useAuthStore()
-const router = useRouter()
-const isCheckingOut = ref(false)
 
 const updateQuantity = async (productId, quantity) => {
   if (quantity < 1) {
@@ -134,28 +143,16 @@ const removeFromCart = async (productId) => {
   await cartStore.removeFromCart(productId)
 }
 
-const handleCheckout = async () => {
+const openCheckout = () => {
   if (!authStore.isAuthenticated) {
     cartStore.closeCart()
     router.push('/login')
     return
   }
+  isCheckoutOpen.value = true
+}
 
-  isCheckingOut.value = true
-  try {
-    await orderService.create({
-      delivery_address: 'Адрес доставки (будет запрошен после)',
-      payment_method: 'cash_on_delivery',
-    })
-    
-    await cartStore.clearCart()
-    alert('Заказ успешно оформлен!')
-    router.push('/profile')
-  } catch (error) {
-    console.error('Ошибка при оформлении заказа:', error)
-    alert(error.response?.data?.detail || 'Ошибка при оформлении заказа')
-  } finally {
-    isCheckingOut.value = false
-  }
+const onCheckoutSuccess = () => {
+  cartStore.closeCart()
 }
 </script>

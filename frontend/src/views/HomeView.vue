@@ -124,7 +124,7 @@
     <!-- Футер -->
     <footer class="border-t border-dark-700 py-8 px-4">
       <div class="max-w-7xl mx-auto text-center text-dark-400">
-        <p>© 2026 Velo Pizza. Все права защищены.</p>
+        <p>© 2026 Piazza Pizza. Все права защищены.</p>
       </div>
     </footer>
   </div>
@@ -141,6 +141,12 @@ const productsStore = useProductsStore()
 const filteredProducts = computed(() => productsStore.filteredProducts)
 
 onMounted(async () => {
-  await productsStore.initialize()
+  try {
+    await productsStore.initialize()
+    console.log('Товары загружены:', productsStore.products.length)
+    console.log('Категории:', productsStore.categories.length)
+  } catch (error) {
+    console.error('Ошибка при загрузке меню:', error)
+  }
 })
 </script>

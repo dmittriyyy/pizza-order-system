@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from ..database import get_db
@@ -7,14 +7,24 @@ from ..repositories.order_repository import OrderRepository
 from ..repositories.cart_repository import CartRepository
 from ..models.order import OrderStatus, Order
 from ..models.orderItem import OrderItem
-from ..models.users import User
-from ..dependencies import get_current_user, get_current_admin_user
+from ..models.users import User, UserRole
+from ..services.order_service import OrderService
+from ..dependencies import (
+    get_current_user, 
+    get_current_admin_user,
+    require_cook, 
+    require_courier,
+    require_admin
+)
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
-
 @router.post("", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
-def create_order(order_data: OrderCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_order(
+    order_data: OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     cart_repo = CartRepository(db)
     cart = cart_repo.get_cart_by_user_id(current_user.id)
 
@@ -24,13 +34,30 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db), current
             detail="Нельзя создать заказ с пустой корзиной"
         )
 
+    items = [
+        {
+            'product_id': item.product_id,
+            'quantity': item.quantity,
+            'price': item.product.price,
+            'comment': None,
+            'special_requests': None
+        }
+        for item in cart.items
+    ]
+
     repo = OrderRepository(db)
     try:
-        new_order = repo.create_order_from_cart(
+        new_order = repo.create_order(
             user_id=current_user.id,
-            address=order_data.delivery_address,
+            total_price=cart.total if hasattr(cart, 'total') else sum(i.product.price * i.quantity for i in cart.items),
+            delivery_address=order_data.delivery_address,
+            delivery_comment=order_data.delivery_comment,
+            delivery_time=order_data.delivery_time,
+            customer_phone=order_data.customer_phone or current_user.login,
+            customer_name=order_data.customer_name or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip(),
+            order_comment=order_data.order_comment,
             payment_method=order_data.payment_method.value if hasattr(order_data.payment_method, 'value') else order_data.payment_method,
-            cart_items=cart.items
+            items=items
         )
         cart_repo.clear_cart(cart)
         return new_order
@@ -40,47 +67,152 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db), current
 
 
 @router.get("", response_model=List[OrderResponse])
-def get_user_orders( skip: int = 0, limit: int = 10, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    orders = db.query(Order).options(
-        joinedload(Order.items).joinedload(OrderItem.product)
-    ).filter(
-        Order.user_id == current_user.id
-    ).order_by(
-        Order.created_at.desc()
-    ).offset(skip).limit(limit).all()
-    
-    for order in orders:
-        for item in order.items:
-            item.subtotal = item.price_at_time_of_order * item.quantity
+def get_user_orders(
+    skip: int = 0,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    service = OrderService(db)
+    orders = service.get_user_orders(current_user.id, skip, limit)
     
     return orders
 
 
 @router.get("/{order_id}", response_model=OrderResponse)
-def get_order( order_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
-
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    service = OrderService(db)
+    order = service.get_order(order_id)
+    
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     
-    if order.user_id != current_user.id:
-        user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
-        if user_role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Доступ запрещён"
-            )
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else current_user.role
+    if order.user_id != current_user.id and user_role != UserRole.admin.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ запрещён"
+        )
     
     return order
 
 
-@router.patch("/{order_id}/status", response_model=OrderResponse)
-def update_order_status( order_id: int, new_status: OrderStatus, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
-    order = db.query(Order).filter(Order.id == order_id).first()
+@router.get("/cook/pending", response_model=List[OrderResponse], dependencies=[Depends(require_cook)])
+def get_cook_orders(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_cook)
+):
+    service = OrderService(db)
+    orders = service.get_cook_orders(skip, limit)
+    
+    return orders
+
+
+@router.patch("/{order_id}/status/start-cooking", response_model=OrderResponse, dependencies=[Depends(require_cook)])
+def start_cooking_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_cook)
+):
+    service = OrderService(db)
+    order = service.get_order(order_id)
+    
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    return service.update_order_status(order_id, OrderStatus.cooking, current_user)
 
-    order.status = new_status
+
+@router.patch("/{order_id}/status/ready", response_model=OrderResponse, dependencies=[Depends(require_cook)])
+def complete_cooking_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_cook)
+):
+    service = OrderService(db)
+    order = service.get_order(order_id)
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    return service.update_order_status(order_id, OrderStatus.ready, current_user)
+
+
+
+@router.get("/courier/ready", response_model=List[OrderResponse], dependencies=[Depends(require_courier)])
+def get_ready_orders(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_courier)
+):
+    service = OrderService(db)
+    orders = service.get_courier_orders(skip, limit)
+    
+    return orders
+
+
+@router.patch("/{order_id}/status/delivering", response_model=OrderResponse, dependencies=[Depends(require_courier)])
+def start_delivery_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_courier)
+):
+    service = OrderService(db)
+    order = service.get_order(order_id)
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    from datetime import datetime
+    order.status = OrderStatus.delivering
+    order.picked_up_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
+    
     return order
+
+
+@router.patch("/{order_id}/status/completed", response_model=OrderResponse, dependencies=[Depends(require_courier)])
+def complete_delivery_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_courier)
+):
+    service = OrderService(db)
+    order = service.get_order(order_id)
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
+    
+    return service.update_order_status(order_id, OrderStatus.completed, current_user)
+
+
+@router.get("/admin/all", response_model=List[OrderResponse], dependencies=[Depends(require_admin)])
+def get_all_orders(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    service = OrderService(db)
+    orders = service.get_all_orders(skip, limit)
+    
+    return orders
+
+
+@router.patch("/{order_id}/status", response_model=OrderResponse, dependencies=[Depends(require_admin)])
+def admin_update_order_status(
+    order_id: int,
+    new_status: OrderStatus = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    service = OrderService(db)
+    return service.update_order_status(order_id, new_status, current_user)

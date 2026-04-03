@@ -25,7 +25,12 @@ class User(Base):
     last_name = Column(String, nullable=True)
     login = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
-    email = Column(String,nullable=True,unique=True) 
+    email = Column(String, nullable=True, unique=True)
+    
+    phone = Column(String, nullable=True) 
+    telegram = Column(String, nullable=True) 
+    default_address = Column(String, nullable=True)
+    
     role = Column(Enum(UserRole), nullable=False, index=True)
     status = Column(Enum(UserStatus), default=UserStatus.active, nullable=True)
     registered_at = Column(DateTime(timezone=True), server_default=func.now())

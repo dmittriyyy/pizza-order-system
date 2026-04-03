@@ -10,7 +10,13 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Integer, nullable=False, default=1)
     price_at_time_of_order = Column(Float, nullable=False)
+    
+    comment = Column(String, nullable=True)
     special_requests = Column(String, nullable=True)
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
+    
+    @property
+    def subtotal(self) -> float:
+        return self.price_at_time_of_order * self.quantity

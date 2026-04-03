@@ -7,6 +7,13 @@ import RegisterView from '@/views/RegisterView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import AboutView from '@/views/AboutView.vue'
 
+// Role-based views
+import CookOrdersView from '@/views/CookOrdersView.vue'
+import CourierOrdersView from '@/views/CourierOrdersView.vue'
+import AdminDashboardView from '@/views/AdminDashboardView.vue'
+import AdminProductsView from '@/views/AdminProductsView.vue'
+import AdminEmployeesView from '@/views/AdminEmployeesView.vue'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -15,7 +22,7 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
       meta: {
-        title: 'Velo Pizza — Главная',
+        title: 'Piazza Pizza — Главная',
       },
     },
     {
@@ -23,7 +30,7 @@ const router = createRouter({
       name: 'login',
       component: LoginView,
       meta: {
-        title: 'Вход — Velo Pizza',
+        title: 'Вход — Piazza Pizza',
         guestOnly: true,
       },
     },
@@ -32,7 +39,7 @@ const router = createRouter({
       name: 'register',
       component: RegisterView,
       meta: {
-        title: 'Регистрация — Velo Pizza',
+        title: 'Регистрация — Piazza Pizza',
         guestOnly: true,
       },
     },
@@ -41,7 +48,7 @@ const router = createRouter({
       name: 'profile',
       component: ProfileView,
       meta: {
-        title: 'Профиль — Velo Pizza',
+        title: 'Профиль — Piazza Pizza',
         requiresAuth: true,
       },
     },
@@ -50,7 +57,65 @@ const router = createRouter({
       name: 'about',
       component: AboutView,
       meta: {
-        title: 'О нас — Velo Pizza',
+        title: 'О нас — Piazza Pizza',
+      },
+    },
+    
+    // ==================== РОЛЕВЫЕ МАРШРУТЫ ====================
+    
+    // Админ
+    {
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: AdminDashboardView,
+      meta: {
+        title: 'Админ панель — Piazza Pizza',
+        requiresAuth: true,
+        requiresRole: 'admin',
+      },
+    },
+    {
+      path: '/admin/products',
+      name: 'admin-products',
+      component: AdminProductsView,
+      meta: {
+        title: 'Управление товарами — Piazza Pizza',
+        requiresAuth: true,
+        requiresRole: 'admin',
+      },
+    },
+    {
+      path: '/admin/employees',
+      name: 'admin-employees',
+      component: AdminEmployeesView,
+      meta: {
+        title: 'Сотрудники — Piazza Pizza',
+        requiresAuth: true,
+        requiresRole: 'admin',
+      },
+    },
+
+    // Повар
+    {
+      path: '/cook/orders',
+      name: 'cook-orders',
+      component: CookOrdersView,
+      meta: {
+        title: 'Заказы на кухне — Piazza Pizza',
+        requiresAuth: true,
+        requiresRole: 'cook',
+      },
+    },
+    
+    // Курьер
+    {
+      path: '/courier/orders',
+      name: 'courier-orders',
+      component: CourierOrdersView,
+      meta: {
+        title: 'Доставка заказов — Piazza Pizza',
+        requiresAuth: true,
+        requiresRole: 'courier',
       },
     },
   ],
@@ -63,7 +128,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title || 'Velo Pizza'
+  document.title = to.meta.title || 'Piazza Pizza'
   
   const authStore = useAuthStore()
   
@@ -77,6 +142,31 @@ router.beforeEach((to, from, next) => {
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     next({ name: 'home' })
     return
+  }
+  
+  // Проверка роли для ролевых маршрутов
+  if (to.meta.requiresRole && authStore.isAuthenticated) {
+    const userRole = authStore.getUserRole
+    
+    // Админ может заходить на все ролевые страницы
+    if (userRole === 'admin') {
+      next()
+      return
+    }
+    
+    // Проверка соответствия роли
+    if (to.meta.requiresRole === 'cook' && userRole !== 'cook') {
+      next({ name: 'home' })
+      return
+    }
+    if (to.meta.requiresRole === 'courier' && userRole !== 'courier') {
+      next({ name: 'home' })
+      return
+    }
+    if (to.meta.requiresRole === 'admin' && userRole !== 'admin') {
+      next({ name: 'home' })
+      return
+    }
   }
   
   next()

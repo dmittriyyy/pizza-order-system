@@ -6,7 +6,7 @@
         <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-500/30">
           <span class="text-4xl">🍕</span>
         </div>
-        <h1 class="text-3xl font-bold text-white">Pizza Premium</h1>
+        <h1 class="text-3xl font-bold text-white">Piazza Pizza</h1>
         <p class="text-dark-400 mt-2">Войдите в свой аккаунт</p>
       </div>
 
