@@ -62,12 +62,12 @@
       </div>
     </section>
 
-    <!-- Меню -->
-    <section id="menu" class="py-16 px-4 bg-dark-900/50">
+    <!-- Меню (Mobile: Glass background, Desktop: Dark background) -->
+    <section id="menu" class="py-8 md:py-16 px-4 bg-white/5 backdrop-blur-sm md:bg-dark-900/50">
       <div class="max-w-7xl mx-auto">
-        <div class="text-center mb-12">
-          <h2 class="text-4xl font-bold text-white mb-4">Наше <span class="text-gradient">меню</span></h2>
-          <p class="text-dark-400 text-lg">Выбирай свои любимые вкусы</p>
+        <div class="text-center mb-8 md:mb-12">
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Наше <span class="text-gradient">меню</span></h2>
+          <p class="text-dark-400 text-base md:text-lg">Выбирай свои любимые вкусы</p>
         </div>
 
         <CategoryFilter />
@@ -81,7 +81,8 @@
           <p class="text-dark-400 text-lg">В этой категории пока пусто</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- Mobile: 2 columns, Desktop: 4 columns -->
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           <ProductCard 
             v-for="product in filteredProducts" 
             :key="product.id"

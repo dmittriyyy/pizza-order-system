@@ -1,4 +1,5 @@
 <template>
+  <!-- Mobile: Extreme rounding (rounded-[30px] via CSS class), Desktop: Standard -->
   <div class="premium-card overflow-hidden group h-full flex flex-col cursor-pointer" @click="openModal">
     <!-- Изображение -->
     <div class="relative h-48 overflow-hidden">
@@ -16,25 +17,25 @@
     </div>
 
     <!-- Контент -->
-    <div class="p-5 flex-1 flex flex-col">
-      <h3 class="text-xl font-bold text-white mb-2 group-hover:text-primary-400 transition-colors">
+    <div class="p-4 md:p-5 flex-1 flex flex-col">
+      <h3 class="text-lg md:text-xl font-bold text-white mb-2 group-hover:text-primary-400 transition-colors">
         {{ product.name }}
       </h3>
-      <p class="text-dark-400 text-sm mb-4 flex-1 line-clamp-2">
+      <p class="text-dark-400 text-xs md:text-sm mb-4 flex-1 line-clamp-2">
         {{ product.description }}
       </p>
 
       <!-- Цена и кнопка -->
       <div class="flex items-center justify-between mt-auto" @click.stop>
         <div class="flex items-baseline space-x-1">
-          <span class="text-2xl font-bold text-gradient">{{ Math.round(product.price) }}</span>
-          <span class="text-dark-400 text-sm">₽</span>
+          <span class="text-xl md:text-2xl font-bold text-gradient">{{ Math.round(product.price) }}</span>
+          <span class="text-dark-400 text-xs md:text-sm">₽</span>
         </div>
 
         <button
           @click="handleAddToCart"
           :disabled="isAdding"
-          class="btn-primary px-5 py-2.5 text-sm flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="btn-primary px-4 py-2 md:px-5 md:py-2.5 text-xs md:text-sm flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span v-if="isAdding">
             <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

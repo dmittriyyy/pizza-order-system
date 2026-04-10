@@ -74,7 +74,7 @@ def seed_data():
                 slug="pepperoni",
                 price=590.0,
                 category_id=categories_data["pizza"].id,
-                image_url="https://images.unsplash.com/photo-1593560708920-6316e4e6d54e?w=500&h=300&fit=crop",
+                image_url="https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&h=300&fit=crop",
                 calories=270,
                 protein=14.0,
                 fat=13.8,

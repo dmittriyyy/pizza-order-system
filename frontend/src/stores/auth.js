@@ -26,14 +26,14 @@ export const useAuthStore = defineStore('auth', {
       try {
         const data = await authService.login(login, password)
         this.token = data.access_token
-        
+
         // Получаем информацию о пользователе из бэкенда
         const user = await this.fetchCurrentUser()
         this.setUser(user)
-        
+
         console.log('✅ Вход успешен. Токен:', data.access_token.substring(0, 20) + '...')
         console.log('✅ Пользователь:', user)
-        
+
         return data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Ошибка при входе'
@@ -56,13 +56,13 @@ export const useAuthStore = defineStore('auth', {
           console.log('✅ Данные пользователя с сервера:', user)
           return user
         } else {
-          console.warn('⚠️ Не удалось получить данные пользователя, используем локальные')
+          console.warn('⚠️ Не удалось получить данные пользователя')
         }
       } catch (e) {
         console.error('❌ Ошибка при получении профиля:', e)
       }
       // Fallback: используем логин из формы
-      return { login: login, role: 'client' }
+      return { login: 'guest', role: 'client' }
     },
 
     async register(userData) {
@@ -98,7 +98,6 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    // Проверка токена с редиректом если невалиден
     checkAuth(redirect = true) {
       if (!this.token) {
         if (redirect) {
@@ -109,10 +108,9 @@ export const useAuthStore = defineStore('auth', {
       return true
     },
 
-    // Редирект по роли
     redirectByRole() {
       if (!this.user) return '/'
-      
+
       const role = this.user.role
       switch (role) {
         case 'admin':

@@ -6,43 +6,76 @@
 
 @layer base {
   body {
-    @apply bg-dark-950 text-dark-50 font-sans antialiased;
+    /* Desktop: Dark solid background */
+    @apply bg-dark-950 text-dark-50 font-sans antialiased md:bg-dark-950;
+    /* Mobile: Gradient background for glass effect to pop */
+  }
+  
+  body::before {
+    /* Mobile background gradient */
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: -1;
+    background: radial-gradient(circle at top right, #ea670a33, transparent 40%),
+                radial-gradient(circle at bottom left, #d14d0733, transparent 40%);
+    @apply block md:hidden;
   }
 }
 
 @layer components {
+  /* GLASSMORPHISM COMPONENTS (Mobile First) */
+  
   .glass {
-    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+    /* Mobile: Glass effect */
+    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+    /* Desktop: Override to dark solid */
+    @apply md:bg-dark-800 md:backdrop-blur-none md:border-dark-700;
   }
-
+  
   .glass-dark {
     @apply bg-dark-900/80 backdrop-blur-lg border border-dark-700;
   }
-
+  
   .glass-button {
-    @apply glass hover:bg-white/20 transition-all duration-300 rounded-2xl;
+    @apply glass hover:bg-white/20 transition-all duration-300;
+    /* Mobile: Extreme rounding */
+    @apply rounded-[20px];
+    /* Desktop: Standard rounding */
+    @apply md:rounded-2xl;
   }
-
+  
   .premium-card {
-    @apply bg-gradient-to-br from-dark-800 to-dark-900 rounded-3xl border border-dark-700
-           shadow-xl hover:shadow-2xl hover:border-primary-500/30 transition-all duration-300;
+    /* Mobile: Glass */
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-[30px];
+    /* Desktop: Dark Gradient */
+    @apply md:bg-gradient-to-br md:from-dark-800 md:to-dark-900 md:rounded-3xl md:border-dark-700 md:hover:border-primary-500/30;
+    @apply shadow-xl md:hover:shadow-2xl md:transition-all md:duration-300;
   }
-
+  
   .btn-primary {
+    /* Mobile */
     @apply bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700
-           text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-300
+           text-white font-semibold py-4 px-6 text-lg
+           rounded-[30px] transition-all duration-300
            shadow-lg hover:shadow-primary-500/25 active:scale-95;
+    /* Desktop */
+    @apply md:py-3 md:px-6 md:text-base md:rounded-2xl;
   }
-
+  
   .btn-secondary {
-    @apply glass hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-2xl
+    @apply glass hover:bg-white/20 text-white font-semibold py-4 px-6 text-lg rounded-[30px]
            transition-all duration-300 active:scale-95;
+    @apply md:py-3 md:px-6 md:text-base md:rounded-2xl;
   }
-
+  
   .input-primary {
-    @apply w-full bg-dark-800/50 border border-dark-600 rounded-2xl px-4 py-3
-           text-dark-50 placeholder-dark-400 focus:outline-none focus:border-primary-500
+    /* Mobile */
+    @apply w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-[20px] px-4 py-4 text-lg
+           text-white placeholder-gray-400 focus:outline-none focus:border-primary-500
            focus:ring-2 focus:ring-primary-500/20 transition-all duration-300;
+    /* Desktop */
+    @apply md:bg-dark-800/50 md:backdrop-blur-none md:border-dark-600 md:rounded-2xl md:px-4 md:py-3 md:text-sm;
   }
 }
 
@@ -50,13 +83,18 @@
   .text-gradient {
     @apply bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent;
   }
-
+  
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
+  
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* iOS Safe Area Support */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 }

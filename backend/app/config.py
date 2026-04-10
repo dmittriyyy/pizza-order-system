@@ -14,8 +14,8 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
-    static_dir: str = "static"
-    images_dir: str = "static/images"
+    static_dir: str = "app/static"
+    images_dir: str = "app/static/images"
 
     SECRET_KEY: str = "super-secret-pizza-key-change-in-production-abc123xyz"
     ALGORITHM: str = "HS256"

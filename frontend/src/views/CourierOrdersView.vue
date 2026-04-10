@@ -220,12 +220,16 @@ const isProcessing = ref(false)
 // Пиццерия (точка старта)
 const PIZZERIA_COORDS = '54.5293,36.2754' // Калуга, Кирова 1
 
-const readyOrders = computed(() => 
+const readyOrders = computed(() =>
   orders.value.filter(o => o.status === 'ready')
 )
 
-const activeOrders = computed(() => 
+const activeOrders = computed(() =>
   orders.value.filter(o => o.status === 'delivering')
+)
+
+const deliveredOrders = computed(() =>
+  orders.value.filter(o => o.status === 'completed')
 )
 
 const formatTime = (dateString) => {
@@ -278,13 +282,14 @@ const fetchOrders = async () => {
       }
     })
     
-    // Заказы в доставке
-    const deliveringResponse = await api.get('/api/orders', {
+    // Заказы в доставке — берем ВСЕ заказы через админский эндпоинт
+    // (обычный /api/orders возвращает только заказы текущего пользователя)
+    const allResponse = await api.get('/api/orders/admin/all', {
       headers: {
         'Authorization': `Bearer ${authStore.getToken}`
       }
     })
-    const deliveringOrders = deliveringResponse.data.filter(o => o.status === 'delivering')
+    const deliveringOrders = allResponse.data.filter(o => o.status === 'delivering')
     
     console.log('Заказы в доставке:', deliveringOrders)
     

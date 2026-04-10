@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div v-if="isOpen" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
     <!-- Overlay -->
     <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="close"></div>
 
@@ -32,8 +32,8 @@
             />
             <p class="text-dark-500 text-xs mt-1">💡 Введите адрес вручную или выберите на карте ниже</p>
           </div>
-          
-          <!-- Карта -->
+
+          <!-- Яндекс Карта -->
           <CheckoutMap
             v-model="selectedLocation"
             @address-selected="onAddressSelected"
@@ -116,19 +116,6 @@
           </div>
         </div>
 
-        <!-- Общий комментарий к заказу -->
-        <div>
-          <label class="block text-dark-300 text-sm font-medium mb-2">
-            Комментарий к заказу
-          </label>
-          <textarea
-            v-model="formData.order_comment"
-            placeholder="Пожелания к заказу в целом..."
-            rows="2"
-            class="input-primary"
-          ></textarea>
-        </div>
-
         <!-- Итого -->
         <div class="glass p-4 rounded-2xl flex items-center justify-between">
           <span class="text-dark-400">Итого к оплате:</span>
@@ -151,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { orderService } from '@/services'
@@ -215,8 +202,7 @@ const fetchUserProfile = async () => {
       }
     })
     userProfile.value = response.data
-    
-    // Заполняем форму данными из профиля
+
     formData.value.customer_name = response.data.first_name || ''
     formData.value.customer_phone = response.data.phone || ''
     formData.value.delivery_address = response.data.default_address || ''
@@ -247,7 +233,6 @@ const submitOrder = async () => {
   }
 }
 
-// Загружаем профиль при открытии модалки
 watch(() => props.isOpen, (newVal) => {
   if (newVal && authStore.isAuthenticated) {
     fetchUserProfile()
@@ -267,13 +252,7 @@ onMounted(() => {
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 </style>

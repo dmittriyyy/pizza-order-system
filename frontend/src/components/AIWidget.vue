@@ -1,5 +1,12 @@
 <template>
-  <div class="fixed bottom-6 right-6 z-40">
+  <!-- 
+    Контейнер чата:
+    - md:right-6 right-4 
+    - md:bottom-24 (на десктопе высоко)
+    - bottom-[100px] (на мобильном над доком)
+  -->
+  <div class="fixed md:right-6 right-4 z-[100] md:bottom-24 bottom-[100px]">
+    
     <!-- Окно чата -->
     <transition 
       enter-active-class="transition duration-300 ease-out"
@@ -11,10 +18,16 @@
     >
       <div 
         v-if="isOpen"
-        class="absolute bottom-20 right-0 w-96 max-w-[calc(100vw-3rem)] glass-dark border border-dark-700 rounded-3xl shadow-2xl overflow-hidden"
+        class="
+          absolute bottom-0 right-0 
+          w-[calc(100vw-32px)] md:w-96 
+          h-[70vh] md:h-[500px] 
+          md:rounded-3xl rounded-t-[30px] rounded-b-none
+          glass border border-white/20 md:border-dark-700 shadow-2xl overflow-hidden flex flex-col
+        "
       >
         <!-- Заголовок чата -->
-        <div class="bg-gradient-to-r from-primary-500 to-primary-600 p-4">
+        <div class="bg-gradient-to-r from-primary-500 to-primary-600 p-4 flex-shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
               <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -22,81 +35,34 @@
               </div>
               <div>
                 <h3 class="text-white font-bold">WOKI</h3>
-                <p class="text-white/70 text-xs">Онлайн • Отвечает за 1.5с</p>
+                <p class="text-white/70 text-xs">Онлайн</p>
               </div>
             </div>
-            <button 
-              @click="closeChat"
-              class="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
+            <button @click="closeChat" class="p-2 hover:bg-white/20 rounded-full">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
         </div>
 
         <!-- Сообщения -->
-        <div ref="messagesContainer" class="h-80 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-          <div 
-            v-for="(message, index) in messages" 
-            :key="index"
-            :class="[
-              'flex',
-              message.role === 'user' ? 'justify-end' : 'justify-start'
-            ]"
-          >
-            <div
-              :class="[
-                'max-w-[80%] px-4 py-3 rounded-2xl',
-                message.role === 'user' 
-                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-br-sm'
-                  : 'glass text-white rounded-bl-sm'
-              ]"
-            >
-              <p class="text-sm">{{ message.content }}</p>
-              <p 
-                :class="[
-                  'text-xs mt-1',
-                  message.role === 'user' ? 'text-white/70' : 'text-dark-400'
-                ]"
-              >
-                {{ formatTime(message.timestamp) }}
-              </p>
+        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+          <div v-for="(message, index) in messages" :key="index" class="flex" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
+            <div class="max-w-[85%] px-4 py-3 rounded-[20px]" :class="message.role === 'user' ? 'bg-primary-500 text-white rounded-br-sm' : 'glass text-white rounded-bl-sm'">
+              <p class="text-sm whitespace-pre-line">{{ message.content }}</p>
             </div>
           </div>
-          
-          <!-- Индикатор набора -->
           <div v-if="isTyping" class="flex justify-start">
             <div class="glass px-4 py-3 rounded-2xl rounded-bl-sm">
-              <div class="flex space-x-2">
-                <div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-                <div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-                <div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
-              </div>
+               <div class="flex space-x-2"><div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce"></div><div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce delay-100"></div><div class="w-2 h-2 bg-primary-400 rounded-full animate-bounce delay-200"></div></div>
             </div>
           </div>
         </div>
 
         <!-- Поле ввода -->
-        <div class="p-4 border-t border-dark-700">
+        <div class="p-4 border-t border-white/10 flex-shrink-0">
           <form @submit.prevent="sendMessage" class="flex items-center space-x-3">
-            <input
-              v-model="newMessage"
-              type="text"
-              placeholder="Спросите о пицце..."
-              class="flex-1 glass px-4 py-3 rounded-2xl text-white placeholder-dark-500 focus:outline-none focus:border-primary-500 transition-colors"
-              :disabled="isTyping"
-            />
-            <button
-              type="submit"
-              :disabled="!newMessage.trim() || isTyping"
-              class="btn-primary p-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-              </svg>
-            </button>
+            <input v-model="newMessage" type="text" placeholder="Спросите о пицце..." class="flex-1 glass px-4 py-3 rounded-[20px] text-white placeholder-gray-400 focus:outline-none" />
+            <button type="submit" class="btn-primary p-3 rounded-[20px]">🚀</button>
           </form>
         </div>
       </div>
@@ -114,7 +80,7 @@
       <button
         v-show="!isOpen"
         @click="openChat"
-        class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300"
+        class="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full shadow-lg shadow-primary-500/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
       >
         <span class="text-3xl">🤖</span>
       </button>
@@ -123,116 +89,56 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick } from 'vue'
 import api from '@/services/api'
 
 const isOpen = ref(false)
 const newMessage = ref('')
 const isTyping = ref(false)
 const messagesContainer = ref(null)
-const sessionId = ref(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+const messages = ref([{ role: 'assistant', content: 'Привет! Я WOKI 🍕 Спрашивай о меню!' }])
 
-const messages = ref([
-  {
-    role: 'assistant',
-    content: 'Привет! Я WOKI, твой AI-помощник по пицце 🍕 Спрашивай меня о чём угодно!',
-    timestamp: new Date(),
-  },
-])
-
-// Загрузка истории при открытии
-const loadHistory = async () => {
-  try {
-    const response = await api.get(`/api/chat/history?session_id=${sessionId.value}&limit=20`)
-    if (response.data.messages && response.data.messages.length > 0) {
-      messages.value = response.data.messages.map(msg => ({
-        role: 'user',
-        content: msg.message,
-        timestamp: new Date(msg.timestamp)
-      })).reduce((acc, msg, idx) => {
-        // Добавляем пару сообщение-ответ
-        if (idx % 2 === 0 && response.data.messages[idx/2]) {
-          acc.push({
-            role: 'assistant',
-            content: response.data.messages[idx/2].response,
-            timestamp: new Date(response.data.messages[idx/2].timestamp)
-          })
-        }
-        return acc
-      }, [])
-    }
-  } catch (error) {
-    console.log('История не загружена (начало новой сессии)')
-  }
-}
-
-const openChat = () => {
-  isOpen.value = true
-  scrollToBottom()
-  if (messages.value.length === 1) {
-    loadHistory()
-  }
-}
-
-const closeChat = () => {
-  isOpen.value = false
-}
+const openChat = () => { isOpen.value = true; scrollToBottom() }
+const closeChat = () => { isOpen.value = false }
 
 const scrollToBottom = async () => {
   await nextTick()
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
-}
-
-const formatTime = (date) => {
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  if (messagesContainer.value) messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
 }
 
 const sendMessage = async () => {
-  const content = newMessage.value.trim()
-  if (!content) return
-
-  // Добавляем сообщение пользователя
-  messages.value.push({
-    role: 'user',
-    content,
-    timestamp: new Date(),
-  })
+  if (!newMessage.value.trim()) return
+  const content = newMessage.value
+  messages.value.push({ role: 'user', content })
   newMessage.value = ''
+  isTyping.value = true
   scrollToBottom()
 
-  // Отправляем в Ollama через API
-  isTyping.value = true
-
   try {
+    const sessionId = localStorage.getItem('chat_session_id') || `session_${Date.now()}`
+    localStorage.setItem('chat_session_id', sessionId)
+
     const response = await api.post('/api/chat/send', {
       message: content,
-      session_id: sessionId.value
+      session_id: sessionId
     }, {
-      timeout: 180000  // 180 секунд таймаут
+      timeout: 180000
     })
 
     messages.value.push({
       role: 'assistant',
       content: response.data.response,
-      timestamp: new Date(),
+      timestamp: new Date()
     })
   } catch (error) {
-    console.error('Ошибка отправки сообщения:', error)
+    console.error('Ошибка чата:', error)
     messages.value.push({
       role: 'assistant',
-      content: 'Извините, произошла ошибка. Попробуйте ещё раз.',
-      timestamp: new Date(),
+      content: 'Извините, сейчас я немного занят 🍕 Попробуй через минуту!'
     })
   } finally {
     isTyping.value = false
     scrollToBottom()
   }
 }
-
-onMounted(() => {
-  // Инициализация при загрузке компонента
-  console.log('🤖 AI Widget initialized')
-})
 </script>

@@ -45,7 +45,8 @@ export const productService = {
   // Получение всех продуктов
   async getAll() {
     const response = await api.get('/api/products')
-    return response.data
+    // Бэкенд возвращает { products: [...], total: N }, нам нужен массив
+    return response.data.products || response.data
   },
 
   // Получение продукта по ID
@@ -57,7 +58,7 @@ export const productService = {
   // Получение продуктов по категории
   async getByCategory(categoryId) {
     const response = await api.get(`/api/products/category/${categoryId}`)
-    return response.data
+    return response.data.products || response.data
   },
 }
 
@@ -65,7 +66,8 @@ export const categoryService = {
   // Получение всех категорий
   async getAll() {
     const response = await api.get('/api/categories')
-    return response.data
+    // Бэкенд может возвращать { categories: [...] } или просто [...]
+    return response.data.categories || response.data
   },
 }
 

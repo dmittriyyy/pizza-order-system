@@ -127,48 +127,59 @@ const router = createRouter({
   },
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   document.title = to.meta.title || 'Piazza Pizza'
-  
+
   const authStore = useAuthStore()
-  
+
+  // Если есть токен, но пользователь не загружен — пробуем загрузить
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.fetchCurrentUser()
+    } catch (e) {
+      console.warn('⚠️ Не удалось загрузить профиль, сбрасываем токен')
+      authStore.logout()
+    }
+  }
+
   // Проверка авторизации
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login', query: { redirect: to.fullPath } })
     return
   }
-  
+
   // Если пользователь авторизован и пытается зайти на страницу для гостей
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     next({ name: 'home' })
     return
   }
-  
+
   // Проверка роли для ролевых маршрутов
   if (to.meta.requiresRole && authStore.isAuthenticated) {
     const userRole = authStore.getUserRole
-    
-    // Админ может заходить на все ролевые страницы
+
+    // 🔥 АДМИН МОЖЕТ ЗАХОДИТЬ ВЕЗДЕ
     if (userRole === 'admin') {
       next()
       return
     }
-    
+
     // Проверка соответствия роли
-    if (to.meta.requiresRole === 'cook' && userRole !== 'cook') {
+    const requiredRole = to.meta.requiresRole
+    if (requiredRole === 'cook' && userRole !== 'cook') {
       next({ name: 'home' })
       return
     }
-    if (to.meta.requiresRole === 'courier' && userRole !== 'courier') {
+    if (requiredRole === 'courier' && userRole !== 'courier') {
       next({ name: 'home' })
       return
     }
-    if (to.meta.requiresRole === 'admin' && userRole !== 'admin') {
+    if (requiredRole === 'admin' && userRole !== 'admin') {
       next({ name: 'home' })
       return
     }
   }
-  
+
   next()
 })
 
