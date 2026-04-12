@@ -1,240 +1,485 @@
 package com.diplom.pizzashop
 
-import android.annotation.SuppressLint
-import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.diplom.pizzashop.ui.viewmodels.MenuViewModel
+import com.diplom.pizzashop.ui.screens.ChatScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.diplom.pizzashop.data.model.Product
+import com.diplom.pizzashop.data.repository.PizzaRepository
+import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+// ==================== THEME COLORS ====================
+val OrangeAccent = Color(0xFFFF6B00)
+val BackgroundDark = Color(0xFF0F0F1A)
+val SurfaceDark = Color(0xFF1A1A2E)
+val TextWhite = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF8899AA)
 
-    private lateinit var webView: WebView
-    private lateinit var speedDialContainer: LinearLayout
-    private var isMenuOpen = false
-    private var currentRole = "guest"
-    
-    // Цвета
-    private val colorInactiveIcon = Color.parseColor("#8899AABB")
-    private val colorActiveIcon = Color.parseColor("#EA670A")
-    private val colorInactiveText = Color.parseColor("#FFFFFF")
-    private val colorActiveText = Color.parseColor("#EA670A")
+// ==================== SCREENS ====================
+sealed class Screen(
+    val route: String,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val selectedIcon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    object Menu : Screen("menu", "Меню", Icons.Outlined.LocalPizza, Icons.Filled.LocalPizza)
+    object AI : Screen("ai", "AI", Icons.Outlined.SmartToy, Icons.Filled.SmartToy)
+    object Cart : Screen("cart", "Корзина", Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart)
+    object Profile : Screen("profile", "Профиль", Icons.Outlined.Person, Icons.Filled.Person)
+    object About : Screen("about", "О нас", Icons.Outlined.Info, Icons.Filled.Info)
+}
 
-    @SuppressLint("SetJavaScriptEnabled")
+// ==================== MAIN ACTIVITY ====================
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContent {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = OrangeAccent,
+                    background = BackgroundDark,
+                    surface = SurfaceDark,
+                    onPrimary = TextWhite,
+                    onBackground = TextWhite,
+                    onSurface = TextWhite
+                ),
+                typography = androidx.compose.material3.Typography(
+                    displayLarge = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 40.sp
+                    ),
+                    headlineMedium = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp
+                    ),
+                    titleLarge = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 28.sp
+                    ),
+                    bodyLarge = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp
+                    ),
+                    bodyMedium = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp
+                    ),
+                    labelMedium = androidx.compose.ui.text.TextStyle(
+                        fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp
+                    )
+                )
+            ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = BackgroundDark) {
+                    PizzaAppNavGraph()
+                }
+            }
+        }
+    }
+}
 
-        // 2. Убираем тулбар
-        supportActionBar?.hide()
+// ==================== NAVIGATION ====================
+@Composable
+fun PizzaAppNavGraph() {
+    val navController = rememberNavController()
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-        webView = findViewById(R.id.webview)
-        speedDialContainer = findViewById(R.id.speedDialContainer)
-
-        // 4. Настройки WebView
-        val settings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.useWideViewPort = true
-        settings.loadWithOverviewMode = true
-        settings.setSupportZoom(false)
-        settings.displayZoomControls = false
-        settings.textZoom = 100
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+    Scaffold(
+        bottomBar = { GlassBottomBar(navController = navController) },
+        containerColor = BackgroundDark
+    ) { paddingValues ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Menu.route,
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable(Screen.Menu.route) {
+                MenuScreen(viewModel = viewModel(), onProductClick = { product ->
+                    selectedProduct = product
+                })
+            }
+            composable(Screen.AI.route) { AIScreen(navController = navController) }
+            composable(Screen.Cart.route) { CartScreen() }
+            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.About.route) { AboutScreen() }
         }
 
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                fetchUserRole()
-                // 3. Скрываем корзину внутри WebView, так как она теперь только в доке
-                hideCartInWebView()
+        // Product Detail Overlay
+        selectedProduct?.let { product ->
+            ProductDetailScreen(product = product, onBack = { selectedProduct = null })
+        }
+    }
+}
+
+// ==================== GLASS BOTTOM BAR ====================
+@Composable
+fun GlassBottomBar(
+    navController: NavHostController,
+    modifier: Modifier = Modifier
+) {
+    val navBackStackEntry = navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry.value?.destination?.route
+
+    val screens = listOf(Screen.Menu, Screen.AI, Screen.Cart, Screen.Profile, Screen.About)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        // Glass background
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0xCC0F0F1A).copy(alpha = 0.85f))
+                .padding(horizontal = 8.dp, vertical = 10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                screens.forEach { screen ->
+                    val isSelected = currentRoute == screen.route
+                    val iconTint = if (isSelected) OrangeAccent else TextSecondary
+                    val iconSize = if (isSelected) 28.dp else 24.dp
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clickable {
+                                if (currentRoute != screen.route) {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isSelected) screen.selectedIcon else screen.icon,
+                            contentDescription = screen.title,
+                            tint = iconTint,
+                            modifier = Modifier.size(iconSize)
+                        )
+                        Text(
+                            text = screen.title,
+                            fontSize = 10.sp,
+                            color = if (isSelected) OrangeAccent else TextSecondary,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== MENU SCREEN ====================
+@Composable
+fun MenuScreen(
+    viewModel: MenuViewModel = viewModel(),
+    onProductClick: (Product) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Header
+        Text(
+            text = "🍕 Наше меню",
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextWhite,
+            modifier = Modifier.padding(20.dp, 20.dp, 20.dp, 10.dp)
+        )
+
+        // Categories
+        LazyRow(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                FilterChip(
+                    selected = viewModel.selectedCategory == null,
+                    onClick = { viewModel.selectCategory(null) },
+                    label = { Text("Все", color = if (viewModel.selectedCategory == null) TextWhite else TextSecondary) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = OrangeAccent,
+                        containerColor = SurfaceDark
+                    )
+                )
+            }
+            items(viewModel.categories) { cat ->
+                FilterChip(
+                    selected = viewModel.selectedCategory == cat.id,
+                    onClick = { viewModel.selectCategory(cat.id) },
+                    label = { Text(cat.name, color = if (viewModel.selectedCategory == cat.id) TextWhite else TextSecondary) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = OrangeAccent,
+                        containerColor = SurfaceDark
+                    )
+                )
             }
         }
 
-        // Загрузка главной страницы
-        webView.loadUrl("http://10.0.2.2:5173/")
-        
-        setupBottomBar()
-    }
-
-    // Скрываем нативную корзину на сайте через JS
-    private fun hideCartInWebView() {
-        webView.evaluateJavascript("""
-            (function() {
-                var cartBtn = document.querySelector('[data-testid="cart-button"]');
-                if (cartBtn) cartBtn.style.display = 'none';
-                var cartSection = document.getElementById('cart-section');
-                if (cartSection) cartSection.style.display = 'none';
-            })()
-        """.trimIndent(), null)
-    }
-
-    private fun setupBottomBar() {
-        val itemMenu = findViewById<LinearLayout>(R.id.itemMenu)
-        val itemAI = findViewById<LinearLayout>(R.id.itemAI)
-        val itemCart = findViewById<LinearLayout>(R.id.itemCart)
-        val itemMore = findViewById<LinearLayout>(R.id.itemMore)
-
-        val resetAll = {
-            listOf(itemMenu, itemAI, itemCart, itemMore).forEach { setInactive(it) }
+        // Loading state
+        if (viewModel.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = OrangeAccent)
+            }
+        } else if (viewModel.error != null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("⚠️", fontSize = 48.sp)
+                    Text(viewModel.error!!, color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
+                    Button(
+                        onClick = { viewModel.loadData() },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) { Text("Повторить") }
+                }
+            }
+        } else {
+            // Products Grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(viewModel.filteredProducts) { product ->
+                    ProductCard(product = product, onClick = { onProductClick(product) })
+                }
+            }
         }
+    }
+}
 
-        // 🍕 Меню
-        itemMenu.setOnClickListener {
-            resetAll(); setActive(itemMenu); closeMenu()
-            webView.loadUrl("http://10.0.2.2:5173/")
-        }
-
-        // 🤖 AI
-        itemAI.setOnClickListener {
-            resetAll(); setActive(itemAI); closeMenu()
-            webView.evaluateJavascript(
-                "document.querySelector('[data-testid=\"ai-widget\"]')?.click()", null
+@Composable
+fun ProductCard(product: Product, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+    ) {
+        Column {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    // Добавляем адрес сервера к относительному пути из БД
+                    .data("http://10.0.2.2:8000${product.image_url}")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = product.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
             )
-        }
-
-        // 🛒 Корзина
-        itemCart.setOnClickListener {
-            resetAll(); setActive(itemCart); closeMenu()
-            webView.loadUrl("http://10.0.2.2:5173/cart")
-        }
-
-        // ••• Ещё
-        itemMore.setOnClickListener {
-            resetAll(); setActive(itemMore)
-            if (isMenuOpen) closeMenu() else openMenu()
-        }
-        
-        setActive(itemMenu)
-    }
-
-    private fun setActive(view: LinearLayout) {
-        (view.getChildAt(0) as? ImageView)?.setColorFilter(colorActiveIcon)
-        (view.getChildAt(1) as? TextView)?.setTextColor(colorActiveText)
-    }
-
-    private fun setInactive(view: LinearLayout) {
-        (view.getChildAt(0) as? ImageView)?.setColorFilter(colorInactiveIcon)
-        (view.getChildAt(1) as? TextView)?.setTextColor(colorInactiveText)
-    }
-
-    private fun fetchUserRole() {
-        webView.evaluateJavascript(
-            "(function(){ return localStorage.getItem('user_role') || 'guest' })()"
-        ) { roleStr ->
-            val cleanRole = roleStr.replace("\"", "").trim()
-            currentRole = if (cleanRole.isEmpty()) "guest" else cleanRole
-            if (isMenuOpen) rebuildSpeedDial()
-        }
-    }
-
-    private fun openMenu() {
-        isMenuOpen = true
-        speedDialContainer.removeAllViews()
-        speedDialContainer.visibility = View.VISIBLE
-        rebuildSpeedDial()
-    }
-
-    private fun rebuildSpeedDial() {
-        speedDialContainer.removeAllViews()
-        
-        val items = mutableListOf<Pair<String, String>>()
-        items.add("Профиль" to "http://10.0.2.2:5173/profile")
-        items.add("О нас" to "http://10.0.2.2:5173/about")
-        
-        when (currentRole) {
-            "courier" -> items.add("Мои доставки" to "http://10.0.2.2:5173/deliveries")
-            "cook" -> items.add("Очередь заказов" to "http://10.0.2.2:5173/kitchen")
-            "admin" -> {
-                items.add("Панель управления" to "http://10.0.2.2:5173/admin")
-                items.add("Статистика" to "http://10.0.2.2:5173/admin/stats")
-            }
-        }
-
-        // Используем reversed() и обычный цикл для совместимости
-        val reversedItems = items.asReversed()
-        reversedItems.forEachIndexed { index, (label, url) ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { setMargins(0, 16, 0, 0) }
-                alpha = 0f; translationY = 50f
-                setBackgroundResource(R.drawable.bg_fab_row)
-                setPadding(8, 8, 8, 8)
-            }
-
-            val text = TextView(this).apply {
-                text = label
-                setTextColor(Color.WHITE)
-                textSize = 14f
-                setPadding(16, 8, 16, 8)
-            }
-
-            val fab = FloatingActionButton(this).apply {
-                setImageResource(R.drawable.ic_arrow_right)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#333333"))
-                layoutParams = ViewGroup.LayoutParams(100, 100)
-                elevation = 8f
-            }
-
-            row.addView(text)
-            row.addView(fab)
-            speedDialContainer.addView(row)
-
-            // Анимация появления
-            row.animate().alpha(1f).translationY(0f)
-                .setStartDelay(index * 60L).setDuration(250).start()
-
-            row.setOnClickListener {
-                closeMenu()
-                webView.loadUrl(url)
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(product.name, style = MaterialTheme.typography.titleLarge, color = TextWhite, maxLines = 1)
+                Text(product.description, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 2)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${product.price.toInt()} ₽", style = MaterialTheme.typography.titleLarge, color = OrangeAccent, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Button(
+                        onClick = { /* TODO: add to cart */ },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("В корзину", fontSize = 11.sp)
+                    }
+                }
             }
         }
     }
+}
 
-    private fun closeMenu() {
-        if (!isMenuOpen) return
-        isMenuOpen = false
-        
-        val count = speedDialContainer.childCount
-        // Цикл в обратном порядке
-        for (i in count - 1 downTo 0) {
-            val view = speedDialContainer.getChildAt(i)
-            view.animate().alpha(0f).translationY(50f)
-                .setDuration(150)
-                .withEndAction {
-                    if (i == 0) speedDialContainer.visibility = View.GONE
-                }.start()
+// ==================== PRODUCT DETAIL ====================
+@Composable
+fun ProductDetailScreen(product: Product, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundDark)
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Image
+        Box {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    // Добавляем адрес сервера к относительному пути из БД
+                    .data("http://10.0.2.2:8000${product.image_url}")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = product.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            )
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .background(Color.Black.copy(0.5f), CircleShape)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = TextWhite)
+            }
+        }
+
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(product.name, style = MaterialTheme.typography.displayLarge, color = TextWhite)
+            Text(product.description, style = MaterialTheme.typography.bodyLarge, color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
+
+            // Nutrition
+            if (product.calories != null || product.protein != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Пищевая ценность", style = MaterialTheme.typography.titleLarge, color = TextWhite)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                            NutritionItem("ккал", product.calories?.toInt()?.toString() ?: "-")
+                            NutritionItem("белки", "${product.protein ?: "-"}г")
+                            NutritionItem("жиры", "${product.fat ?: "-"}г")
+                            NutritionItem("углеводы", "${product.carbohydrates ?: "-"}г")
+                        }
+                    }
+                }
+            }
+
+            // Ingredients
+            if (!product.ingredients.isNullOrEmpty()) {
+                Text("Состав", style = MaterialTheme.typography.titleLarge, color = TextWhite, modifier = Modifier.padding(top = 20.dp))
+                Spacer(Modifier.height(8.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    product.ingredients.forEach { ing ->
+                        SuggestionChip(
+                            onClick = { },
+                            label = { Text(ing, color = TextSecondary) },
+                            colors = SuggestionChipDefaults.suggestionChipColors(containerColor = SurfaceDark),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    }
+                }
+            }
+
+            // Price & Button
+            Spacer(Modifier.height(24.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${product.price.toInt()} ₽", style = MaterialTheme.typography.displayLarge, color = OrangeAccent)
+                Spacer(Modifier.weight(1f))
+                Button(
+                    onClick = { /* TODO: add to cart */ },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.height(48.dp).width(160.dp)
+                ) {
+                    Text("В корзину", fontSize = 16.sp)
+                }
+            }
         }
     }
+}
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (isMenuOpen) { closeMenu(); return true }
-            if (webView.canGoBack()) { webView.goBack(); return true }
-            finish()
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
+@Composable
+fun NutritionItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = OrangeAccent, fontWeight = FontWeight.Bold)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
     }
+}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        webView.destroy()
+@Composable
+fun FlowRow(
+    modifier: Modifier = Modifier,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    content: @Composable () -> Unit
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = horizontalArrangement
+    ) {
+        content()
+    }
+}
+
+// ==================== OTHER SCREENS ====================
+@Composable
+fun AIScreen(navController: NavHostController) {
+    ChatScreen(onBack = { navController.popBackStack() })
+}
+
+@Composable
+fun CartScreen() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(80.dp))
+            Text("Корзина пуста", style = MaterialTheme.typography.headlineMedium, color = TextWhite, modifier = Modifier.padding(top = 16.dp))
+            Text("Добавьте что-нибудь вкусное!", color = TextSecondary, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Person, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(80.dp))
+            Text("Профиль", style = MaterialTheme.typography.headlineMedium, color = TextWhite, modifier = Modifier.padding(top = 16.dp))
+        }
+    }
+}
+
+@Composable
+fun AboutScreen() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(20.dp)) {
+            Icon(Icons.Default.Info, contentDescription = null, tint = OrangeAccent, modifier = Modifier.size(80.dp))
+            Text("Piazza Pizza", style = MaterialTheme.typography.displayLarge, color = TextWhite, modifier = Modifier.padding(top = 16.dp))
+            Text("Калуга, улица Кирова, 1\n\nДоставка: 30 минут или пицца бесплатно!\n\nРаботаем: 10:00 - 23:00",
+                style = MaterialTheme.typography.bodyLarge, color = TextSecondary, modifier = Modifier.padding(top = 16.dp))
+        }
     }
 }

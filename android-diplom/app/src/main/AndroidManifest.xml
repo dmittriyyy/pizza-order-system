@@ -3,17 +3,20 @@
     package="com.diplom.pizzashop">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Piazza Pizza"
-        android:theme="@style/Theme.PiazzaPizza.NoActionBar"
-        android:usesCleartextTraffic="true">
-        
-        <activity android:name=".MainActivity"
+        android:theme="@style/Theme.PizzaApp"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true">
+
+        <activity
+            android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
