@@ -1,42 +1,32 @@
 package com.diplom.pizzashop.ui.theme
 
-import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
+// iOS 26 Colors
+val OrangeAccent = Color(0xFFFF6B00)
+val DarkBackground = Color(0xFF0F0F1A)
+val GlassSurface = Color(0xFF1A1A2E)
+val TextWhite = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF8899AA)
+
+private val AppColorScheme = darkColorScheme(
     primary = OrangeAccent,
-    secondary = OrangeLight,
-    background = BackgroundDark,
-    surface = SurfaceDark,
+    secondary = Color(0xFFFF8533),
+    background = DarkBackground,
+    surface = GlassSurface,
     onPrimary = TextWhite,
-    onSecondary = TextWhite,
     onBackground = TextWhite,
     onSurface = TextWhite,
-    error = Color.Red
+    error = Color(0xFFFF3B30)
 )
 
 @Composable
 fun PizzaTheme(content: @Composable () -> Unit) {
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = BackgroundDark.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-        }
-    }
-
     MaterialTheme(
-        colorScheme = DarkColorScheme,
-        typography = Typography,
+        colorScheme = AppColorScheme,
         content = content
     )
 }

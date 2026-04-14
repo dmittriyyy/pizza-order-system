@@ -3,7 +3,6 @@ package com.diplom.pizzashop.data.model
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
-// Модель товара
 @Parcelize
 data class Product(
     val id: Int,
@@ -22,7 +21,6 @@ data class Product(
     val updated_at: String?
 ) : Parcelable
 
-// Модель категории
 @Parcelize
 data class Category(
     val id: Int,
@@ -30,8 +28,38 @@ data class Category(
     val slug: String
 ) : Parcelable
 
-// Обертка для ответа сервера: { "products": [...], "total": N }
 data class ProductsResponse(
     val products: List<Product>,
     val total: Int
 )
+
+data class CategoriesResponse(
+    val categories: List<Category>,
+    val total: Int
+)
+
+@Parcelize
+data class CartItem(
+    val product_id: Int,
+    val name: String,
+    val price: Double,
+    val quantity: Int,
+    val image_url: String?,
+    val subtotal: Double = price * quantity
+) : Parcelable
+
+data class CartResponse(
+    val items: List<CartItem>,
+    val total: Double
+)
+
+data class AddToCartRequest(
+    val product_id: Int,
+    val quantity: Int = 1
+)
+
+@Parcelize
+data class ChatMessage(
+    val role: String,
+    val content: String
+) : Parcelable
