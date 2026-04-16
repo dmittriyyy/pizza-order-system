@@ -11,6 +11,8 @@ val DarkBackground = Color(0xFF0F0F1A)
 val GlassSurface = Color(0xFF1A1A2E)
 val TextWhite = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFF8899AA)
+val DarkCardBackground = Color(0xFF141423) // A slightly darker shade for inner cards
+val Purple = Color(0xFFBB86FC) // A general purple color, adjust if a specific shade is intended
 
 private val AppColorScheme = darkColorScheme(
     primary = OrangeAccent,

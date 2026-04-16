@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import kotlinx.coroutines.launch
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -17,23 +16,41 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.diplom.pizzashop.data.api.CreateOrderRequest
 import com.diplom.pizzashop.ui.theme.*
+import com.diplom.pizzashop.ui.viewmodels.AuthViewModel
 import com.diplom.pizzashop.ui.viewmodels.CartViewModel
 
 @Composable
 fun CheckoutScreen(
     cartViewModel: CartViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel(),
     onBack: () -> Unit,
     onSuccess: () -> Unit
 ) {
-    var address by remember { mutableStateOf("") }
-    var comment by remember { mutableStateOf("") }
-    var deliveryTime by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+    var address by rememberSaveable { mutableStateOf("") }
+    var comment by rememberSaveable { mutableStateOf("") }
+    var deliveryTime by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var phone by rememberSaveable { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+
+    val userFullName = listOfNotNull(authViewModel.firstName, authViewModel.lastName)
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+
+    LaunchedEffect(authViewModel.isAuthenticated, authViewModel.defaultAddress, userFullName, authViewModel.phone) {
+        if (address.isBlank() && !authViewModel.defaultAddress.isNullOrBlank()) {
+            address = authViewModel.defaultAddress!!
+        }
+        if (name.isBlank() && userFullName.isNotBlank()) {
+            name = userFullName
+        }
+        if (phone.isBlank() && !authViewModel.phone.isNullOrBlank()) {
+            phone = authViewModel.phone!!
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -152,15 +169,27 @@ fun CheckoutScreen(
                             error = "Укажите адрес доставки"
                             return@Button
                         }
+
                         isLoading = true
-                        // TODO: Call API to create order
-                        // Simulate success
-                        scope.launch {
-                            kotlinx.coroutines.delay(1000)
-                            cartViewModel.clearCart()
-                            isLoading = false
-                            onSuccess()
-                        }
+                        error = null
+                        cartViewModel.createOrder(
+                            CreateOrderRequest(
+                                delivery_address = address,
+                                delivery_comment = comment.ifBlank { null },
+                                delivery_time = deliveryTime.ifBlank { null },
+                                customer_name = name.ifBlank { null },
+                                customer_phone = phone.ifBlank { null },
+                                order_comment = comment.ifBlank { null }
+                            ),
+                            onSuccess = {
+                                isLoading = false
+                                onSuccess()
+                            },
+                            onError = { message ->
+                                isLoading = false
+                                error = message
+                            }
+                        )
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
                     shape = RoundedCornerShape(16.dp),

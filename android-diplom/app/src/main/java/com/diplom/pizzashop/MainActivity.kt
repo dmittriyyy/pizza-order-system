@@ -10,6 +10,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.outlined.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -23,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.diplom.pizzashop.ui.screens.*
 import com.diplom.pizzashop.ui.theme.*
 import com.diplom.pizzashop.ui.viewmodels.*
@@ -34,11 +38,18 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     object AI : Screen("ai", "AI", Icons.Outlined.SmartToy, Icons.Filled.SmartToy)
     object Cart : Screen("cart", "Корзина", Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart)
     object More : Screen("more", "Ещё", Icons.Outlined.MoreHoriz, Icons.Filled.MoreHoriz)
-    object Login : Screen("login", "Вход", Icons.Outlined.Login, Icons.Filled.Login)
+    object Login : Screen("login", "Вход", Icons.AutoMirrored.Outlined.Login, Icons.AutoMirrored.Filled.Login)
     object Register : Screen("register", "Регистрация", Icons.Outlined.PersonAdd, Icons.Filled.PersonAdd)
-    object Checkout : Screen("checkout", "Оформление", Icons.Outlined.ReceiptLong, Icons.Filled.ReceiptLong)
+    object Checkout : Screen("checkout", "Оформление", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong)
+    object Profile : Screen("profile", "Профиль", Icons.Outlined.Person, Icons.Filled.Person)
+    object About : Screen("about", "О нас", Icons.Outlined.Info, Icons.Filled.Info)
     object Kitchen : Screen("kitchen", "Кухня", Icons.Outlined.Kitchen, Icons.Filled.Kitchen)
     object Delivery : Screen("delivery", "Доставка", Icons.Outlined.LocalShipping, Icons.Filled.LocalShipping)
+    object AdminDashboard : Screen("admin_dashboard", "Админ панель", Icons.Outlined.AdminPanelSettings, Icons.Filled.AdminPanelSettings)
+    object AdminProducts : Screen("admin_products", "Товары", Icons.Outlined.Inventory, Icons.Filled.Inventory)
+    object AdminEmployees : Screen("admin_employees", "Сотрудники", Icons.Outlined.People, Icons.Filled.People)
+    object AdminAllOrders : Screen("admin_all_orders", "Все заказы", Icons.Outlined.ReceiptLong, Icons.Filled.ReceiptLong)
+    object ProductDetail : Screen("product_detail/{productId}", "Товар", Icons.Outlined.Info, Icons.Filled.Info)
 }
 
 class MainActivity : ComponentActivity() {
@@ -81,7 +92,7 @@ fun PizzaApp() {
                 MenuScreen(
                     menuViewModel = menuViewModel, 
                     cartViewModel = cartViewModel,
-                    onProductClick = { } 
+                    onProductClick = { product -> navController.navigate("product_detail/${product.id}") } 
                 ) 
             }
             composable(Screen.AI.route) { AIScreen() }
@@ -100,13 +111,27 @@ fun PizzaApp() {
             }
             composable(Screen.Kitchen.route) { KitchenScreen() }
             composable(Screen.Delivery.route) { DeliveryScreen() }
+            composable(Screen.AdminDashboard.route) { 
+                AdminDashboardScreen(
+                    onNavigateToProducts = { navController.navigate(Screen.AdminProducts.route) },
+                    onNavigateToEmployees = { navController.navigate(Screen.AdminEmployees.route) },
+                    onNavigateToAllOrders = { navController.navigate(Screen.AdminAllOrders.route) }
+                ) 
+            }
+            composable(Screen.AdminProducts.route) { AdminProductsScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(Screen.AdminEmployees.route) { AdminEmployeesScreen(onNavigateBack = { navController.popBackStack() }) }
             composable(Screen.More.route) { 
                 MoreScreen(
                     authViewModel = authViewModel,
                     onNavigateToLogin = { navController.navigate(Screen.Login.route) },
                     onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                    onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+                    onNavigateToAbout = { navController.navigate(Screen.About.route) },
                     onNavigateToKitchen = { navController.navigate(Screen.Kitchen.route) },
-                    onNavigateToDelivery = { navController.navigate(Screen.Delivery.route) }
+                    onNavigateToDelivery = { navController.navigate(Screen.Delivery.route) },
+                    onNavigateToAdminDashboard = { navController.navigate(Screen.AdminDashboard.route) },
+                    onNavigateToAdminProducts = { navController.navigate(Screen.AdminProducts.route) },
+                    onNavigateToAdminEmployees = { navController.navigate(Screen.AdminEmployees.route) }
                 ) 
             }
             composable(Screen.Login.route) { 
@@ -114,6 +139,27 @@ fun PizzaApp() {
                     authViewModel = authViewModel,
                     onLoginSuccess = { navController.popBackStack() },
                     onNavigateToRegister = { navController.navigate(Screen.Register.route) }
+                )
+            }
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    authViewModel = authViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.About.route) {
+                AboutScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Screen.AdminAllOrders.route) { AdminAllOrdersScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(
+                route = "product_detail/{productId}",
+                arguments = listOf(navArgument("productId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val productId = backStackEntry.arguments?.getInt("productId") ?: 0
+                ProductDetailScreen(
+                    product = menuViewModel.getProductById(productId),
+                    cartViewModel = cartViewModel,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Register.route) { 

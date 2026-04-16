@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -138,7 +142,7 @@ fun ProductCard(product: Product, onClick: () -> Unit, onAddToCart: () -> Unit) 
     ) {
         Column {
             AsyncImage(
-                model = "http://10.0.2.2:8000${product.image_url}",
+                model = if (product.image_url?.startsWith("http") == true) product.image_url else "http://10.0.2.2:8000${product.image_url ?: ""}",
                 contentDescription = product.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -147,7 +151,6 @@ fun ProductCard(product: Product, onClick: () -> Unit, onAddToCart: () -> Unit) 
             )
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(product.name, style = MaterialTheme.typography.titleLarge, color = TextWhite, maxLines = 1)
-                Text(product.description, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 2)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("${product.price.toInt()} ₽", style = MaterialTheme.typography.titleLarge, color = OrangeAccent, fontWeight = FontWeight.Bold)
@@ -183,5 +186,107 @@ fun ProductCard(product: Product, onClick: () -> Unit, onAddToCart: () -> Unit) 
             kotlinx.coroutines.delay(300)
             isAnimating = false
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductDetailScreen(
+    product: Product?,
+    cartViewModel: CartViewModel,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            SmallTopAppBar(
+                title = { Text(product?.name ?: "Товар", color = TextWhite) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад", tint = TextWhite)
+                    }
+                },
+                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = DarkBackground)
+            )
+        },
+        containerColor = DarkBackground
+    ) { padding ->
+        if (product == null) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text("Товар не найден", color = TextWhite)
+            }
+            return@Scaffold
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            AsyncImage(
+                model = if (product.image_url?.startsWith("http") == true) product.image_url else "http://10.0.2.2:8000${product.image_url ?: ""}",
+                contentDescription = product.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .clip(RoundedCornerShape(24.dp))
+            )
+
+            Spacer(Modifier.height(20.dp))
+            Text(product.name, style = MaterialTheme.typography.headlineSmall, color = TextWhite)
+            Spacer(Modifier.height(8.dp))
+            Text("${product.price.toInt()} ₽", style = MaterialTheme.typography.headlineSmall, color = OrangeAccent, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            Text(product.description, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+
+            Spacer(Modifier.height(20.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                product.calories?.let {
+                    DetailRow(label = "Калории", value = "$it ккал")
+                }
+                product.weight?.let {
+                    DetailRow(label = "Вес", value = "$it г")
+                }
+                product.protein?.let {
+                    DetailRow(label = "Белки", value = "${it} г")
+                }
+                product.fat?.let {
+                    DetailRow(label = "Жиры", value = "${it} г")
+                }
+                product.carbohydrates?.let {
+                    DetailRow(label = "Углеводы", value = "${it} г")
+                }
+                product.ingredients?.takeIf { it.isNotEmpty() }?.let {
+                    DetailRow(label = "Ингредиенты", value = it.joinToString(", "))
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = { cartViewModel.addToCart(product.id) },
+                colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("Добавить в корзину", fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(GlassSurface, shape = RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = TextSecondary)
+        Text(value, color = TextWhite, fontWeight = FontWeight.Bold)
     }
 }

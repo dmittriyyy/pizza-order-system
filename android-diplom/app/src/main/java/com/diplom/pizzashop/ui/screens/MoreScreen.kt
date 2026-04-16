@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,8 +23,13 @@ fun MoreScreen(
     authViewModel: AuthViewModel = viewModel(),
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onNavigateToKitchen: () -> Unit = {},
-    onNavigateToDelivery: () -> Unit = {}
+    onNavigateToDelivery: () -> Unit = {},
+    onNavigateToAdminDashboard: () -> Unit = {},
+    onNavigateToAdminProducts: () -> Unit = {},
+    onNavigateToAdminEmployees: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp), 
@@ -46,7 +52,7 @@ fun MoreScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Войти", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Icon(Icons.Default.Login, contentDescription = "Login", tint = TextWhite)
+                        Icon(Icons.AutoMirrored.Filled.Login, contentDescription = "Login", tint = TextWhite)
                     }
                 }
             }
@@ -74,15 +80,15 @@ fun MoreScreen(
         } else {
             // Профиль
             item {
-                MoreCard(icon = Icons.Default.Person, title = "Профиль", subtitle = "Личные данные и заказы")
+                MoreCard(icon = Icons.Default.Person, title = "Профиль", subtitle = "Личные данные и заказы", onClick = onNavigateToProfile)
             }
             item {
-                MoreCard(icon = Icons.Default.Info, title = "О нас", subtitle = "Информация о Piazza Pizza")
+                MoreCard(icon = Icons.Default.Info, title = "О нас", subtitle = "Информация о Piazza Pizza", onClick = onNavigateToAbout)
             }
             
             // Разделитель
             item {
-                Divider(color = TextSecondary.copy(0.2f), modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(color = TextSecondary.copy(0.2f), modifier = Modifier.padding(vertical = 8.dp))
             }
             
             // Кнопки выхода
@@ -99,7 +105,7 @@ fun MoreScreen(
                 }
 
                 if (authViewModel.userRole == "admin") {
-                    item { MoreCard(icon = Icons.Default.AdminPanelSettings, title = "Админ панель", subtitle = "Управление товарами") }
+                    item { MoreCard(icon = Icons.Default.AdminPanelSettings, title = "Админ панель", subtitle = "Управление товарами", onClick = onNavigateToAdminDashboard) }
                     // Админ имеет доступ ко всему
                     item { 
                         MoreCard(
@@ -119,10 +125,10 @@ fun MoreScreen(
                     }
                 }
                 if (authViewModel.userRole == "cook") {
-                    item { MoreCard(icon = Icons.Default.Kitchen, title = "Кухня", subtitle = "Заказы на приготовление") }
+                    item { MoreCard(icon = Icons.Default.Kitchen, title = "Кухня", subtitle = "Заказы на приготовление", onClick = onNavigateToKitchen) }
                 }
                 if (authViewModel.userRole == "courier") {
-                    item { MoreCard(icon = Icons.Default.LocalShipping, title = "Доставка", subtitle = "Активные заказы") }
+                    item { MoreCard(icon = Icons.Default.LocalShipping, title = "Доставка", subtitle = "Активные заказы", onClick = onNavigateToDelivery) }
                 }
             }
         }

@@ -12,8 +12,38 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False
 
 async def get_current_user(token=Depends(oauth2_scheme), db=Depends(get_db)):
     if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Не авторизован"
+        )
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id_str = payload.get("sub")
+        if user_id_str is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверный токен"
+            )
+        user_id = int(user_id_str)
+    except (JWTError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный токен"
+        )
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Пользователь не найден"
+        )
+    return user
+
+
+async def get_current_user_optional(token=Depends(oauth2_scheme), db=Depends(get_db)):
+    if not token:
         return None
-    
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id_str = payload.get("sub")
@@ -22,13 +52,8 @@ async def get_current_user(token=Depends(oauth2_scheme), db=Depends(get_db)):
         user_id = int(user_id_str)
     except (JWTError, ValueError):
         return None
-    
     user = db.query(User).filter(User.id == user_id).first()
     return user
-
-
-async def get_current_user_optional(token=Depends(oauth2_scheme), db=Depends(get_db)):
-    return await get_current_user(token, db)
 
 
 async def get_current_admin_user(token=Depends(oauth2_scheme), db=Depends(get_db)):
