@@ -188,12 +188,12 @@ fun GlassBottomBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
-        // Glass background
+        // Dock background
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xFF1A1A2E).copy(alpha = 0.95f))
+                .background(GlassSurface.copy(alpha = 0.95f))
                 .padding(horizontal = 8.dp, vertical = 10.dp)
         ) {
             Row(
