@@ -55,6 +55,7 @@ data class CartItem(
     val price: Double,
     val quantity: Int,
     val image_url: String?,
+    val comment: String? = null,
     val subtotal: Double = price * quantity
 ) : Parcelable
 

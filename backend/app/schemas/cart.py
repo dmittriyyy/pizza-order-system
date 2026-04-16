@@ -19,6 +19,7 @@ class CartItem(BaseModel):
     quantity: int = Field(...,description="Quantity in cart")
     subtotal: float = Field(...,description="Total price for this item (quantity * price)")
     image_url: Optional[str] = Field(None, description="Product image URL")
+    comment: Optional[str] = Field(None, description="Comment for this cart item")
 
 class CartResponse(BaseModel):
     items: list[CartItem] = Field(...,description="List of items in cart")

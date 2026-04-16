@@ -232,14 +232,25 @@ const deliveredOrders = computed(() =>
   orders.value.filter(o => o.status === 'completed')
 )
 
+const parseServerDate = (dateString) => {
+  if (!dateString) return null
+  const normalized = /z|[+-]\d{2}:\d{2}$/i.test(dateString)
+    ? dateString
+    : `${dateString}Z`
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 const formatTime = (dateString) => {
-  const date = new Date(dateString)
+  const date = parseServerDate(dateString)
+  if (!date) return '--:--'
   return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
 const formatPickupTime = (dateString) => {
   if (!dateString) return 'Не забран'
-  const date = new Date(dateString)
+  const date = parseServerDate(dateString)
+  if (!date) return 'Не забран'
   return date.toLocaleTimeString('ru-RU', { 
     hour: '2-digit', 
     minute: '2-digit',
@@ -250,7 +261,9 @@ const formatPickupTime = (dateString) => {
 
 const getTimeLeft = (order) => {
   if (!order.picked_up_at) return 3600000 // 1 час по умолчанию
-  const pickupTime = new Date(order.picked_up_at).getTime()
+  const pickupDate = parseServerDate(order.picked_up_at)
+  if (!pickupDate) return 3600000
+  const pickupTime = pickupDate.getTime()
   const now = Date.now()
   const elapsed = now - pickupTime
   return Math.max(0, 3600000 - elapsed) // 1 час в миллисекундах

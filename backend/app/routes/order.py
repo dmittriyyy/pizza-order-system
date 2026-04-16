@@ -39,7 +39,7 @@ def create_order(
             'product_id': item.product_id,
             'quantity': item.quantity,
             'price': item.product.price,
-            'comment': None,
+            'comment': item.comment,
             'special_requests': None
         }
         for item in cart.items
@@ -170,9 +170,9 @@ def start_delivery_order(
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     
-    from datetime import datetime
+    from datetime import datetime, timezone
     order.status = OrderStatus.delivering
-    order.picked_up_at = datetime.utcnow()
+    order.picked_up_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(order)
     

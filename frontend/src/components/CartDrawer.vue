@@ -46,6 +46,7 @@
             <div class="flex-1">
               <h4 class="text-white font-semibold text-sm md:text-base">{{ item.name }}</h4>
               <p class="text-primary-400 font-bold mt-1">{{ Math.round(item.subtotal) }} ₽</p>
+              <p v-if="item.comment" class="text-yellow-300 text-xs mt-2 leading-relaxed">📝 {{ item.comment }}</p>
               
               <!-- Quantity Controls -->
               <div class="flex items-center space-x-3 mt-2">

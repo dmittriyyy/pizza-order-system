@@ -14,6 +14,10 @@ class ChatService:
         "и", "еще", "ещё", "плюс", "давай", "добавь", "добавляй", "мне",
         "пожалуйста", "хочу", "будет", "нужно", "надо", "закажи"
     }
+    COMMENT_STARTERS = {
+        "без", "с", "со", "на", "в", "отдельно", "побольше", "поменьше",
+        "острый", "острое", "холодный", "теплый", "тёплый"
+    }
 
     def __init__(self, db: Session):
         self.db = db
@@ -22,7 +26,7 @@ class ChatService:
         query = self.db.query(ChatMessage)
         
         if user_id:
-            query = query.filter(ChatMessage.user_id == user_id)
+            query = query.filter(ChatMessage.user_id == user_id)п
         elif session_id:
             query = query.filter(ChatMessage.session_id == session_id)
         
@@ -232,21 +236,67 @@ class ChatService:
 
         return best_product if best_score >= 60 else None
 
+    def _extract_comment_from_segment(self, segment: str, product: Dict[str, Any]) -> Optional[str]:
+        normalized_segment = self._normalize_text(segment)
+        product_variants = sorted(
+            set(self._text_variants(product["name"])),
+            key=len,
+            reverse=True
+        )
+
+        cleaned = normalized_segment
+        matched_full_variant = False
+        for variant in product_variants:
+            if variant and variant in cleaned:
+                cleaned = re.sub(rf"\b{re.escape(variant)}\b", " ", cleaned, count=1)
+                matched_full_variant = True
+                break
+
+        if not matched_full_variant:
+            product_tokens = set(self._tokenize(product["name"]))
+            remaining_tokens = []
+            removed_tokens = set()
+            for token in cleaned.split():
+                stem = self._stem_token(token)
+                if stem in product_tokens and stem not in removed_tokens:
+                    removed_tokens.add(stem)
+                    continue
+                remaining_tokens.append(token)
+            cleaned = " ".join(remaining_tokens)
+
+        cleaned = re.sub(r"\b\d+\b", " ", cleaned)
+        cleaned = re.sub(
+            r"\b(один|одна|одну|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять)\b",
+            " ",
+            cleaned
+        )
+
+        tokens = [token for token in cleaned.split() if token]
+        while tokens and tokens[0] in self.STOPWORDS:
+            tokens.pop(0)
+
+        if not tokens:
+            return None
+
+        if tokens[0] not in self.COMMENT_STARTERS and len(tokens) <= 2:
+            return None
+
+        comment = " ".join(tokens).strip()
+        return comment or None
+
     def _extract_items_from_message(self, message: str, menu_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         items = []
-        seen_product_ids = set()
 
         for segment in self._split_cart_request(message):
             product = self._match_product_from_segment(segment, menu_list)
-            if not product or product["id"] in seen_product_ids:
+            if not product:
                 continue
 
             items.append({
                 "product_id": product["id"],
                 "quantity": self._extract_quantity(segment, product["name"]),
-                "comment": ""
+                "comment": self._extract_comment_from_segment(segment, product)
             })
-            seen_product_ids.add(product["id"])
 
         return items
 
@@ -371,7 +421,8 @@ class ChatService:
         
         cart_item = self.db.query(CartItem).filter(
             CartItem.cart_id == cart.id,
-            CartItem.product_id == product_id
+            CartItem.product_id == product_id,
+            CartItem.comment == comment
         ).first()
         
         if cart_item:

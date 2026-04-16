@@ -201,6 +201,15 @@ fun CartItemCard(
                 color = TextSecondary,
                 fontSize = 14.sp
             )
+            if (!item.comment.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "📝 ${item.comment}",
+                    color = Color.Yellow.copy(alpha = 0.9f),
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+            }
             Spacer(Modifier.height(10.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,

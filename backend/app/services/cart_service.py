@@ -29,7 +29,8 @@ class CartService:
                 price=item.product.price,
                 quantity=item.quantity,
                 subtotal=subtotal,
-                image_url=item.product.image_url
+                image_url=item.product.image_url,
+                comment=item.comment
             )
             cart_items.append(cart_item)
             total_price += subtotal

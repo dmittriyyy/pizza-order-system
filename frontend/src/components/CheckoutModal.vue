@@ -160,6 +160,7 @@ const router = useRouter()
 const isSubmitting = ref(false)
 const userProfile = ref(null)
 const selectedLocation = ref(null)
+const hasManualAddressSelection = ref(false)
 
 const paymentMethods = [
   { value: 'cash_on_delivery', label: 'При получении', icon: '💵' },
@@ -179,11 +180,14 @@ const formData = ref({
 })
 
 const close = () => {
+  hasManualAddressSelection.value = false
   emit('close')
 }
 
 const onAddressSelected = (location) => {
   if (location) {
+    hasManualAddressSelection.value = true
+    selectedLocation.value = location
     formData.value.delivery_address = location.address
     formData.value.delivery_lat = location.lat
     formData.value.delivery_lng = location.lng
@@ -191,6 +195,7 @@ const onAddressSelected = (location) => {
 }
 
 const onAddressUpdate = (address) => {
+  hasManualAddressSelection.value = true
   formData.value.delivery_address = address
 }
 
@@ -205,7 +210,9 @@ const fetchUserProfile = async () => {
 
     formData.value.customer_name = response.data.first_name || ''
     formData.value.customer_phone = response.data.phone || ''
-    formData.value.delivery_address = response.data.default_address || ''
+    if (!hasManualAddressSelection.value) {
+      formData.value.delivery_address = response.data.default_address || ''
+    }
   } catch (error) {
     console.error('Ошибка при загрузке профиля:', error)
   }
@@ -224,7 +231,7 @@ const submitOrder = async () => {
     await cartStore.clearCart()
     emit('success')
     close()
-    router.push('/profile')
+    router.push('/')
   } catch (error) {
     console.error('Ошибка при оформлении заказа:', error)
     alert(error.response?.data?.detail || 'Ошибка при оформлении заказа')
@@ -235,6 +242,7 @@ const submitOrder = async () => {
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal && authStore.isAuthenticated) {
+    hasManualAddressSelection.value = false
     fetchUserProfile()
   }
 })

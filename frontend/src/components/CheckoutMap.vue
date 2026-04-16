@@ -49,7 +49,6 @@ const selectedAddress = ref('')
 let ymaps = null
 let map = null
 let placemark = null
-let geocoder = null
 
 // Координаты Калуги (центр)
 const KALUGA_COORDS = [54.5293, 36.2754]
@@ -122,6 +121,8 @@ const loadYandexMaps = () => {
 
 const selectPoint = async (coords) => {
   try {
+    const fallbackAddress = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`
+
     // Удаляем старую метку
     if (placemark) {
       map.geoObjects.remove(placemark)
@@ -143,6 +144,17 @@ const selectPoint = async (coords) => {
     })
     
     map.geoObjects.add(placemark)
+
+    // Сразу обновляем форму, даже если геокодер ответит позже или с ошибкой.
+    selectedAddress.value = fallbackAddress
+    const fallbackValue = {
+      lat: coords[0],
+      lng: coords[1],
+      address: fallbackAddress,
+    }
+    emit('update:modelValue', fallbackValue)
+    emit('address-selected', fallbackValue)
+    emit('update:address', fallbackAddress)
     
     // Получаем адрес по координатам
     await getReverseGeocode(coords)
@@ -153,20 +165,14 @@ const selectPoint = async (coords) => {
 
 const getReverseGeocode = async (coords) => {
   try {
-    const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY
-    console.log('Yandex API Key:', apiKey ? 'Loaded' : 'NOT LOADED')
-    console.log('Запрос геокодинга для:', coords)
-    
-    const response = await fetch(
-      `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json&geocode=${coords[1]},${coords[0]}&results=1`
-    )
-    const data = await response.json()
-    console.log('Ответ геокодера:', data)
-    
-    const address = data.response.GeoObjectCollection.featureMember[0]?.GeoObject?.name
-    
+    const result = await ymaps.geocode(coords, { results: 1 })
+    const firstGeoObject = result.geoObjects.get(0)
+    const address =
+      firstGeoObject?.getAddressLine?.() ||
+      firstGeoObject?.properties?.get('text') ||
+      firstGeoObject?.properties?.get('name')
+
     if (address) {
-      console.log('Найден адрес:', address)
       selectedAddress.value = address
       
       // Отправляем данные наверх
@@ -193,6 +199,7 @@ const clearSelection = () => {
   selectedAddress.value = ''
   emit('update:modelValue', null)
   emit('address-selected', null)
+  emit('update:address', '')
 }
 
 // Загружаем карту при монтировании
@@ -202,10 +209,34 @@ onMounted(() => {
 
 // Следим за изменением адреса извне
 watch(() => props.defaultAddress, (newAddress) => {
-  if (newAddress && geocoder) {
-    geocoder.cancel()
+  if (!newAddress) {
+    return
   }
+
+  selectedAddress.value = newAddress
 })
+
+watch(() => props.modelValue, async (newValue) => {
+  if (!newValue) {
+    return
+  }
+
+  if (newValue.address) {
+    selectedAddress.value = newValue.address
+  }
+
+  if (map && newValue.lat && newValue.lng) {
+    const currentCoords = placemark?.geometry?.getCoordinates?.()
+    if (
+      currentCoords &&
+      Math.abs(currentCoords[0] - newValue.lat) < 0.000001 &&
+      Math.abs(currentCoords[1] - newValue.lng) < 0.000001
+    ) {
+      return
+    }
+    await selectPoint([newValue.lat, newValue.lng])
+  }
+}, { deep: true })
 </script>
 
 <style scoped>
