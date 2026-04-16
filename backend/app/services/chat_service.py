@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 import json
+import re
 from ..models.chat_message import ChatMessage
 from ..models.products import Product
 from ..models.cart import Cart
@@ -9,6 +10,11 @@ from ..services.ollama_service import ollama_service, CART_TOOLS
 
 
 class ChatService:
+    STOPWORDS = {
+        "и", "еще", "ещё", "плюс", "давай", "добавь", "добавляй", "мне",
+        "пожалуйста", "хочу", "будет", "нужно", "надо", "закажи"
+    }
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -78,6 +84,268 @@ class ChatService:
         
         return json.dumps(menu_items, ensure_ascii=False)
 
+    def _normalize_text(self, text: str) -> str:
+        text = (text or "").lower().replace("ё", "е")
+        text = re.sub(r"[\"'`«»()!?.,:;]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
+    def _replace_number_words(self, text: str) -> str:
+        normalized = self._normalize_text(text)
+        replacements = {
+            "1": "один",
+            "2": "два",
+            "3": "три",
+            "4": "четыре",
+            "5": "пять",
+            "6": "шесть",
+            "7": "семь",
+            "8": "восемь",
+            "9": "девять",
+            "10": "десять",
+        }
+        for digit, word in replacements.items():
+            normalized = re.sub(rf"\b{digit}\b", word, normalized)
+        return normalized
+
+    def _text_variants(self, text: str) -> List[str]:
+        normalized = self._normalize_text(text)
+        with_numbers_as_words = self._replace_number_words(text)
+        variants = [normalized]
+        if with_numbers_as_words != normalized:
+            variants.append(with_numbers_as_words)
+        return variants
+
+    def _stem_token(self, token: str) -> str:
+        token = self._normalize_text(token)
+        endings = [
+            "иями", "ями", "ами", "ого", "ему", "ому", "ыми", "ими", "его",
+            "ая", "яя", "ую", "юю", "ой", "ей", "ый", "ий", "ые", "ие",
+            "ым", "им", "ом", "ем", "ых", "их", "ам", "ям", "ах", "ях",
+            "ов", "ев", "ом", "ем", "а", "я", "у", "ю", "ы", "и", "е", "о"
+        ]
+        for ending in endings:
+            if len(token) > len(ending) + 2 and token.endswith(ending):
+                return token[:-len(ending)]
+        return token
+
+    def _tokenize(self, text: str) -> List[str]:
+        normalized = self._normalize_text(text)
+        return [
+            self._stem_token(token)
+            for token in normalized.split()
+            if token and token not in self.STOPWORDS
+        ]
+
+    def _extract_quantity(self, text: str, product_name: Optional[str] = None) -> int:
+        normalized_text = self._normalize_text(text)
+        normalized_product_name = self._normalize_text(product_name or "")
+        product_variants = set(self._text_variants(product_name or ""))
+
+        # Если сегмент по сути является названием товара "Четыре сыра" / "4 сыра",
+        # не трактуем число как количество.
+        if normalized_text in product_variants:
+            return 1
+
+        digit_match = re.search(r"\b(\d+)\b", text)
+        if digit_match:
+            return max(1, int(digit_match.group(1)))
+
+        number_words = {
+            "один": 1, "одна": 1, "одну": 1,
+            "два": 2, "две": 2,
+            "три": 3,
+            "четыре": 4,
+            "пять": 5,
+            "шесть": 6,
+            "семь": 7,
+            "восемь": 8,
+            "девять": 9,
+            "десять": 10,
+        }
+        for word, value in number_words.items():
+            if normalized_product_name.startswith(f"{word} "):
+                continue
+            if re.search(rf"\b{word}\b", normalized_text):
+                return value
+        return 1
+
+    def _is_affirmative(self, message: str) -> bool:
+        normalized = self._normalize_text(message)
+        affirmative_patterns = [
+            r"\bда\b", r"\bага\b", r"\bугу\b", r"\bок\b", r"\bокей\b", r"\bхорошо\b",
+            r"\bдавай\b", r"\bдобавляй\b", r"\bдобавь\b", r"\bберу\b", r"\bхочу\b",
+            r"\bпогнали\b", r"\bможно\b"
+        ]
+        return any(re.search(pattern, normalized) for pattern in affirmative_patterns)
+
+    def _split_cart_request(self, message: str) -> List[str]:
+        normalized = self._normalize_text(message)
+        parts = re.split(r"\s*(?:,| и | плюс | а еще | ещё |;)\s*", normalized)
+        return [part.strip() for part in parts if part.strip()]
+
+    def _product_match_score(self, segment: str, product: Dict[str, Any]) -> int:
+        segment_variants = self._text_variants(segment)
+        name_variants = self._text_variants(product["name"])
+
+        for segment_normalized in segment_variants:
+            for name_normalized in name_variants:
+                if name_normalized in segment_normalized:
+                    return 100 + len(name_normalized)
+
+        segment_tokens = set()
+        for variant in segment_variants:
+            segment_tokens.update(self._tokenize(variant))
+
+        product_tokens = set()
+        for variant in name_variants:
+            product_tokens.update(
+                token for token in self._tokenize(variant)
+                if token not in {"пицц", "напит", "десерт"}
+            )
+
+        if not product_tokens:
+            return 0
+
+        overlap = len(segment_tokens & product_tokens)
+        first_product_token = next(iter(self._tokenize(product["name"])), None)
+
+        if overlap == len(product_tokens):
+            return 80 + overlap * 10
+        if first_product_token and first_product_token in segment_tokens:
+            return 70
+        if overlap > 0 and len(product_tokens) == 1:
+            return 60 + overlap * 10
+        if overlap >= 2:
+            return 40 + overlap * 10
+        return 0
+
+    def _match_product_from_segment(self, segment: str, menu_list: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        best_product = None
+        best_score = 0
+
+        for product in menu_list:
+            score = self._product_match_score(segment, product)
+            if score > best_score:
+                best_product = product
+                best_score = score
+
+        return best_product if best_score >= 60 else None
+
+    def _extract_items_from_message(self, message: str, menu_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        items = []
+        seen_product_ids = set()
+
+        for segment in self._split_cart_request(message):
+            product = self._match_product_from_segment(segment, menu_list)
+            if not product or product["id"] in seen_product_ids:
+                continue
+
+            items.append({
+                "product_id": product["id"],
+                "quantity": self._extract_quantity(segment, product["name"]),
+                "comment": ""
+            })
+            seen_product_ids.add(product["id"])
+
+        return items
+
+    def _extract_suggested_item_from_context(
+        self,
+        message: str,
+        context: List[dict],
+        menu_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        if not self._is_affirmative(message) or not context:
+            return []
+
+        last_response = context[-1]["response"]
+        quoted_products = re.findall(r"«([^»]+)»", last_response)
+        if not quoted_products:
+            return []
+
+        items = []
+        for product_name in quoted_products:
+            product = self._match_product_from_segment(product_name, menu_list)
+            if product:
+                items.append({
+                    "product_id": product["id"],
+                    "quantity": 1,
+                    "comment": ""
+                })
+
+        return items
+
+    def _add_items_to_cart(
+        self,
+        items: List[Dict[str, Any]],
+        user_id: Optional[int],
+        session_id: Optional[str]
+    ) -> str:
+        if not user_id:
+            return (
+                "🔐 Чтобы товары появились в корзине приложения, сначала войди в аккаунт "
+                "во вкладке «Ещё». После входа я смогу добавлять позиции прямо в твою корзину."
+            )
+
+        PAIRINGS = {
+            1: [8, 9, 10, 11],
+            2: [8, 9],
+            3: [8, 9, 10],
+            4: [8, 9],
+            5: [8, 9, 10, 11],
+            6: [8, 9],
+            7: [8, 9],
+            8: [10, 11],
+            9: [10, 11],
+            10: [8, 9],
+            11: [8, 9],
+        }
+
+        responses = []
+        total = 0
+        added_product_ids = []
+
+        for item in items:
+            result = self.add_to_cart(
+                product_id=item["product_id"],
+                quantity=item.get("quantity", 1),
+                comment=item.get("comment", ""),
+                user_id=user_id,
+                session_id=session_id
+            )
+
+            if result["success"]:
+                responses.append(
+                    f"✅ {result['product_name']} ({item.get('quantity', 1)} шт.) добавлено в корзину! Сумма: {result['price']}₽"
+                )
+                total += result["price"]
+                added_product_ids.append(item["product_id"])
+            else:
+                responses.append(f"❌ Ошибка: {result.get('error', 'Не удалось добавить товар')}")
+
+        if len(responses) > 1:
+            responses.append(f"\n💰 Итого за добавленные товары: {total}₽")
+
+        if added_product_ids and len(responses) <= 3:
+            base_id = added_product_ids[0]
+            pairing_ids = PAIRINGS.get(base_id, [])
+            suggested_ids = [pid for pid in pairing_ids if pid not in added_product_ids]
+
+            if suggested_ids:
+                suggest_names = {
+                    8: ("Морс ягодный", 150),
+                    9: ("Зеленый чай", 120),
+                    10: ("Чизкейк Нью-Йорк", 250),
+                    11: ("Тирамису", 300),
+                }
+                suggest_id = suggested_ids[0]
+                if suggest_id in suggest_names:
+                    name, price = suggest_names[suggest_id]
+                    responses.append(f"🍽️ К этому отлично подойдёт «{name}» за {price}₽! Добавить?")
+
+        return "\n".join(responses) if responses else "Товар добавлен в корзину!"
+
     def add_to_cart(self, product_id: int, quantity: int = 1, comment: Optional[str] = None, 
                     user_id: Optional[int] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
         product = self.db.query(Product).filter(Product.id == product_id).first()
@@ -136,6 +404,14 @@ class ChatService:
             menu_list = json.loads(menu_json)
             menu_ids = "\n".join([f"- {p['name']} = id {p['id']}" for p in menu_list])
 
+            parsed_items = self._extract_items_from_message(message, menu_list)
+            if parsed_items:
+                return self._add_items_to_cart(parsed_items, user_id, session_id)
+
+            suggested_items = self._extract_suggested_item_from_context(message, context, menu_list)
+            if suggested_items:
+                return self._add_items_to_cart(suggested_items, user_id, session_id)
+
             system_prompt = f"""You are WOKI — a friendly and slightly humorous assistant
 of Piazza Pizza in Kaluga, Russia. You love pizza and are passionate about food.
 Address: Kirova st. 1. Hours: 10:00-23:00. Delivery: 30 min or free.
@@ -159,6 +435,7 @@ CRITICAL:
 - Тирамису = id 11, Чизкейк Нью-Йорк = id 10 — это РАЗНЫЕ товары
 - Всегда сверяй название с CART IDs списком выше перед вызовом add_to_cart
 - Никогда не путай десерты между собой
+- Никогда не показывай пользователю id товаров и не упоминай служебные tool arguments в ответе
 
 RULES:
 - Use calories_total for calorie questions (not calories per 100g)
@@ -199,23 +476,7 @@ If multiple items added — calculate and show total sum at the end."""
             return self._fallback_response(message)
 
     def _handle_tool_calls(self, tool_calls: List[Dict], user_id: Optional[int], session_id: Optional[str]) -> str:
-        PAIRINGS = {
-            1: [8,9,10,11],  # Четыре сыра → напитки/десерты
-            2: [8,9],        # Мясная → напитки
-            3: [8,9,10],     # Гавайская → напитки/десерты
-            4: [8,9],        # Пепперони → напитки
-            5: [8,9,10,11],  # Маргарита → напитки/десерты
-            6: [8,9],        # Дабл Биф → напитки
-            7: [8,9],        # Чикен Бургер → напитки
-            8: [10,11],      # Морс → десерты
-            9: [10,11],      # Чай → десерты
-            10: [8,9],       # Чизкейк → напитки
-            11: [8,9],       # Тирамису → напитки
-        }
-        
-        responses = []
-        total = 0
-        added_product_ids = []
+        parsed_items = []
 
         for tool_call in tool_calls:
             function = tool_call.get("function", {})
@@ -228,48 +489,13 @@ If multiple items added — calculate and show total sum at the end."""
                 comment = func_args.get("comment", "")
 
                 if product_id:
-                    result = self.add_to_cart(
-                        product_id=product_id,
-                        quantity=quantity,
-                        comment=comment,
-                        user_id=user_id,
-                        session_id=session_id
-                    )
+                    parsed_items.append({
+                        "product_id": product_id,
+                        "quantity": quantity,
+                        "comment": comment
+                    })
 
-                    if result["success"]:
-                        responses.append(
-                            f"✅ {result['product_name']} ({result['quantity']} шт.) добавлено в корзину! Сумма: {result['price']}₽"
-                        )
-                        total += result['price']
-                        added_product_ids.append(product_id)
-                    else:
-                        responses.append(f"❌ Ошибка: {result.get('error', 'Не удалось добавить товар')}")
-
-        # если добавили больше 1 товара — показываем общую сумму
-        if len(responses) > 1:
-            responses.append(f"\n💰 Итого: {total}₽")
-
-        if added_product_ids and len(responses) <= 3:
-            base_id = added_product_ids[0]
-            pairing_ids = PAIRINGS.get(base_id, [])
-            
-            suggested_ids = [pid for pid in pairing_ids if pid not in added_product_ids]
-            
-            if suggested_ids:
-                suggest_id = suggested_ids[0]
-                from ..models.products import Product
-                from sqlalchemy.orm import Session
-                suggest_names = {
-                    8: ("Морс ягодный", 150),
-                    9: ("Зеленый чай", 120),
-                    10: ("Чизкейк Нью-Йорк", 250),
-                    11: ("Тирамису", 300),
-                }
-                if suggest_id in suggest_names:
-                    name, price = suggest_names[suggest_id]
-                    responses.append(f"🍽️ К этому отлично подойдёт «{name}» за {price}₽! Добавить?")
-
-        return "\n".join(responses) if responses else "Товар добавлен в корзину!"
+        return self._add_items_to_cart(parsed_items, user_id, session_id)
 
     def _fallback_response(self, message: str) -> str:
         message_lower = message.lower()

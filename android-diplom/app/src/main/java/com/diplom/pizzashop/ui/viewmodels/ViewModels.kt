@@ -129,7 +129,7 @@ class ChatViewModel : ViewModel() {
     var isTyping by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String, onSuccess: () -> Unit = {}) {
         if (text.isBlank()) return
         errorMessage = null
         messages = messages + ChatMessage("user", text)
@@ -139,6 +139,7 @@ class ChatViewModel : ViewModel() {
             result.fold(
                 onSuccess = { response ->
                     messages = messages + ChatMessage("assistant", response)
+                    onSuccess()
                 },
                 onFailure = { error ->
                     messages = messages + ChatMessage("assistant", "⚠️ ${error.message}")

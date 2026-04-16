@@ -18,7 +18,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -95,7 +101,9 @@ fun PizzaApp() {
                     onProductClick = { product -> navController.navigate("product_detail/${product.id}") } 
                 ) 
             }
-            composable(Screen.AI.route) { AIScreen() }
+            composable(Screen.AI.route) {
+                AIScreen(cartViewModel = cartViewModel)
+            }
             composable(Screen.Cart.route) { 
                 CartScreen(
                     viewModel = cartViewModel,
@@ -187,13 +195,25 @@ fun GlassBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp)
+            .graphicsLayer {
+                shadowElevation = 8f
+                shape = RoundedCornerShape(32.dp)
+                clip = true
+            }
     ) {
-        // Dock background
+        // Gradient background with glass effect
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(GlassSurface.copy(alpha = 0.95f))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            GlassSurface.copy(alpha = 0.95f),
+                            DarkCardBackground.copy(alpha = 0.98f)
+                        )
+                    )
+                )
                 .padding(horizontal = 8.dp, vertical = 10.dp)
         ) {
             Row(
@@ -218,27 +238,53 @@ fun GlassBottomBar(
                             }
                             .padding(horizontal = 4.dp, vertical = 6.dp)
                     ) {
-                        // "Таблетка" фона для активного элемента
+                        // Animated background for active element
+                        val backgroundColor = if (isSelected) OrangeAccent.copy(alpha = 0.2f) else Color.Transparent
+                        val scale = animateFloatAsState(
+                            targetValue = if (isSelected) 1.05f else 1f,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "scale"
+                        ).value
+                        val iconColor = animateColorAsState(
+                            targetValue = if (isSelected) OrangeAccent else TextSecondary,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "iconColor"
+                        ).value
+                        val textColor = animateColorAsState(
+                            targetValue = if (isSelected) OrangeAccent else TextSecondary,
+                            animationSpec = tween(durationMillis = 300),
+                            label = "textColor"
+                        ).value
+
                         Box(
                             modifier = Modifier
-                                .background(
-                                    color = if (isSelected) OrangeAccent.copy(alpha = 0.15f) else Color.Transparent,
-                                    shape = RoundedCornerShape(20.dp)
+                                .shadow(
+                                    elevation = if (isSelected) 8.dp else 0.dp,
+                                    shape = RoundedCornerShape(24.dp)
                                 )
+                                .background(
+                                    color = backgroundColor,
+                                    shape = RoundedCornerShape(24.dp)
+                                )
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                                .clip(RoundedCornerShape(24.dp))
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     imageVector = if (isSelected) screen.selectedIcon else screen.icon,
                                     contentDescription = screen.title,
-                                    tint = if (isSelected) OrangeAccent else Color(0xFF8899AA),
+                                    tint = iconColor,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = screen.title,
                                     fontSize = 10.sp,
-                                    color = if (isSelected) OrangeAccent else Color(0xFF8899AA),
+                                    color = textColor,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }

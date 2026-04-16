@@ -17,10 +17,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.diplom.pizzashop.data.model.ChatMessage
 import com.diplom.pizzashop.ui.theme.*
+import com.diplom.pizzashop.ui.viewmodels.CartViewModel
 import com.diplom.pizzashop.ui.viewmodels.ChatViewModel
 
 @Composable
-fun AIScreen(viewModel: ChatViewModel = viewModel()) {
+fun AIScreen(
+    viewModel: ChatViewModel = viewModel(),
+    cartViewModel: CartViewModel
+) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
@@ -84,7 +88,9 @@ fun AIScreen(viewModel: ChatViewModel = viewModel()) {
                 )
                 IconButton(onClick = {
                     if (inputText.isNotBlank()) {
-                        viewModel.sendMessage(inputText)
+                        viewModel.sendMessage(inputText) {
+                            cartViewModel.loadCart()
+                        }
                         inputText = ""
                     }
                 }) {

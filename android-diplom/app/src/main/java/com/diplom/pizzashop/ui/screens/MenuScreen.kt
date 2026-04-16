@@ -242,35 +242,72 @@ fun ProductDetailScreen(
             Text(product.description, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
 
             Spacer(Modifier.height(20.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                product.calories?.let {
-                    DetailRow(label = "Калории", value = "$it ккал")
-                }
-                product.weight?.let {
-                    DetailRow(label = "Вес", value = "$it г")
-                }
-                product.protein?.let {
-                    DetailRow(label = "Белки", value = "${it} г")
-                }
-                product.fat?.let {
-                    DetailRow(label = "Жиры", value = "${it} г")
-                }
-                product.carbohydrates?.let {
-                    DetailRow(label = "Углеводы", value = "${it} г")
-                }
-                product.ingredients?.takeIf { it.isNotEmpty() }?.let {
-                    DetailRow(label = "Ингредиенты", value = it.joinToString(", "))
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkCardBackground),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    Text("Пищевая ценность", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        product.calories?.let {
+                            NutritionBadge(label = "Калории", value = "$it ккал", modifier = Modifier.weight(1f))
+                        }
+                        product.weight?.let {
+                            NutritionBadge(label = "Вес", value = "$it г", modifier = Modifier.weight(1f))
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        product.protein?.let {
+                            NutritionBadge(label = "Белки", value = "${it} г", modifier = Modifier.weight(1f))
+                        }
+                        product.fat?.let {
+                            NutritionBadge(label = "Жиры", value = "${it} г", modifier = Modifier.weight(1f))
+                        }
+                    }
+
+                    product.carbohydrates?.let {
+                        NutritionBadge(label = "Углеводы", value = "${it} г", modifier = Modifier.fillMaxWidth())
+                    }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+            product.ingredients?.takeIf { it.isNotEmpty() }?.let {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkCardBackground),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("Ингредиенты", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(it.joinToString(", "), color = TextSecondary, fontSize = 14.sp, lineHeight = 20.sp)
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+
             Button(
                 onClick = { cartViewModel.addToCart(product.id) },
                 colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp)
             ) {
-                Text("Добавить в корзину", fontSize = 16.sp)
+                Text("Добавить в корзину", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -281,12 +318,53 @@ fun DetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(GlassSurface, shape = RoundedCornerShape(16.dp))
-            .padding(14.dp),
+            .background(GlassSurface.copy(alpha = 0.85f), shape = RoundedCornerShape(18.dp))
+            .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = TextSecondary)
-        Text(value, color = TextWhite, fontWeight = FontWeight.Bold)
+        Text(label, color = TextSecondary, fontSize = 13.sp)
+        Text(value, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun InfoTag(label: String, value: String) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = GlassSurface,
+        modifier = Modifier
+            .height(78.dp)
+            .widthIn(min = 130.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(14.dp)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, color = TextSecondary, fontSize = 12.sp)
+            Text(value, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+fun NutritionBadge(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = DarkCardBackground,
+        modifier = modifier
+            .height(88.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(14.dp)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, color = TextSecondary, fontSize = 12.sp)
+            Text(value, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        }
     }
 }

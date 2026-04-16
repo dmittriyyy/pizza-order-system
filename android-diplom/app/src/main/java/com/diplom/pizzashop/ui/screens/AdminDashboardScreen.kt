@@ -116,49 +116,48 @@ fun AdminDashboardScreen(
                         Text("📊 Статусы заказов", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                     item {
-                        LazyRow(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 StatusCountCard(
                                     "Новые",
                                     viewModel.statusCounts["created"] ?: 0,
-                                    Color.Blue.copy(0.7f),
-                                    modifier = Modifier.width(85.dp).height(100.dp)
+                                    Color(0xFF2563EB),
+                                    modifier = Modifier.weight(1f).height(110.dp)
                                 )
-                            }
-                            item {
                                 StatusCountCard(
                                     "Готовятся",
                                     viewModel.statusCounts["cooking"] ?: 0,
-                                    Color.Yellow.copy(0.7f),
-                                    modifier = Modifier.width(85.dp).height(100.dp)
+                                    Color(0xFFF59E0B),
+                                    modifier = Modifier.weight(1f).height(110.dp)
                                 )
-                            }
-                            item {
                                 StatusCountCard(
                                     "Готовы",
                                     viewModel.statusCounts["ready"] ?: 0,
-                                    Color.Green.copy(0.7f),
-                                    modifier = Modifier.width(85.dp).height(100.dp)
+                                    Color(0xFF16A34A),
+                                    modifier = Modifier.weight(1f).height(110.dp)
                                 )
                             }
-                            item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 StatusCountCard(
                                     "В доставке",
                                     viewModel.statusCounts["delivering"] ?: 0,
-                                    Color.Magenta.copy(0.7f),
-                                    modifier = Modifier.width(85.dp).height(100.dp)
+                                    Color(0xFF0EA5E9),
+                                    modifier = Modifier.weight(1f).height(110.dp)
                                 )
-                            }
-                            item {
                                 StatusCountCard(
                                     "Выполнены",
                                     viewModel.statusCounts["completed"] ?: 0,
-                                    TextSecondary,
-                                    modifier = Modifier.width(85.dp).height(100.dp)
+                                    Color(0xFF64748B),
+                                    modifier = Modifier.weight(1f).height(110.dp)
                                 )
                             }
                         }
@@ -222,8 +221,11 @@ fun StatusCountCard(label: String, count: Int, color: Color, modifier: Modifier 
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(count.toString(), color = color, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(
