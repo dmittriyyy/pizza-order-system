@@ -11,6 +11,18 @@ export const authService = {
     return response.data
   },
 
+  async telegramLogin(initData) {
+    const response = await api.post('/api/auth/telegram', { init_data: initData })
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token)
+      localStorage.setItem('token_type', response.data.token_type)
+    }
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+    }
+    return response.data
+  },
+
   // Регистрация пользователя
   async register(userData) {
     const response = await api.post('/api/auth/register', userData)

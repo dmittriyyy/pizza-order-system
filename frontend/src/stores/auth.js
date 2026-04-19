@@ -54,6 +54,8 @@ export const useAuthStore = defineStore('auth', {
         if (response.ok) {
           const user = await response.json()
           console.log('✅ Данные пользователя с сервера:', user)
+          this.user = user
+          authService.setCurrentUser(user)
           return user
         } else {
           console.warn('⚠️ Не удалось получить данные пользователя')
@@ -63,6 +65,22 @@ export const useAuthStore = defineStore('auth', {
       }
       // Fallback: используем логин из формы
       return { login: 'guest', role: 'client' }
+    },
+
+    async telegramLogin(initData) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const data = await authService.telegramLogin(initData)
+        this.token = data.access_token
+        this.user = data.user
+        return data
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Ошибка входа через Telegram'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
     async register(userData) {

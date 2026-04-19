@@ -26,7 +26,7 @@ class ChatService:
         query = self.db.query(ChatMessage)
         
         if user_id:
-            query = query.filter(ChatMessage.user_id == user_id)п
+            query = query.filter(ChatMessage.user_id == user_id)
         elif session_id:
             query = query.filter(ChatMessage.session_id == session_id)
         

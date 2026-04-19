@@ -26,6 +26,7 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = None
     phone: Optional[str] = None
     telegram: Optional[str] = None
+    telegram_id: Optional[str] = None
     default_address: Optional[str] = None
 
 
@@ -34,6 +35,7 @@ class UserResponse(UserBase):
     role: UserRole
     phone: Optional[str] = None
     telegram: Optional[str] = None
+    telegram_id: Optional[str] = None
     default_address: Optional[str] = None
 
     class Config:

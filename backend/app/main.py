@@ -9,6 +9,7 @@ from .database import init_db
 # Импорт роутеров (строго по файловой структуре проекта)
 from .routes.auth import router as auth_router
 from .routes.auth_me import router as auth_me_router
+from .routes.auth_telegram import router as auth_telegram_router
 from .routes.profile import router as profile_router
 from .routes.products import router as products_router
 from .routes.categories import router as categories_router
@@ -43,6 +44,7 @@ if os.path.exists(settings.static_dir):
 # 3. Подключаем роутеры (префиксы уже заданы в самих файлах роутеров!)
 app.include_router(auth_router)
 app.include_router(auth_me_router)
+app.include_router(auth_telegram_router)
 app.include_router(profile_router)
 app.include_router(products_router)
 app.include_router(categories_router)

@@ -29,6 +29,7 @@ class User(Base):
     
     phone = Column(String, nullable=True) 
     telegram = Column(String, nullable=True) 
+    telegram_id = Column(String, unique=True, nullable=True, index=True)
     default_address = Column(String, nullable=True)
     
     role = Column(Enum(UserRole), nullable=False, index=True)
