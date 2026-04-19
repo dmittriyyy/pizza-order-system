@@ -119,8 +119,14 @@ fun ProductAdminCard(product: Product, viewModel: AdminProductsViewModel) {
                 Text(product.description, color = TextSecondary, fontSize = 12.sp, maxLines = 2)
                 Spacer(Modifier.height(4.dp))
                 Text("${product.price.toInt()} ₽", color = OrangeAccent, fontWeight = FontWeight.Bold)
-                if (product.calories != null) {
-                    Text("${product.calories} ккал", color = TextSecondary, fontSize = 11.sp)
+                val totalCalories = product.total_calories
+                    ?: if ((product.calories ?: 0) > 0 && (product.weight ?: 0) > 0) {
+                        ((product.calories ?: 0) * (product.weight ?: 0) + 50) / 100
+                    } else {
+                        0
+                    }
+                if (totalCalories > 0) {
+                    Text("$totalCalories ккал за порцию", color = TextSecondary, fontSize = 11.sp)
                 }
             }
 

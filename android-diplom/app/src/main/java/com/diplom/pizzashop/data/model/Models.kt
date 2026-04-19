@@ -13,6 +13,7 @@ data class Product(
     val category_id: Int,
     val image_url: String?,
     val calories: Int?,
+    val total_calories: Int?,
     val protein: Double?,
     val fat: Double?,
     val carbohydrates: Double?,

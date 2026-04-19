@@ -1,19 +1,13 @@
 <template>
-  <!-- 
-    Исправлено: 
-    - fixed inset-0 (на весь экран поверх всего)
-    - flex items-center justify-center (строго по центру)
-    - z-[60] (выше дока и навбара)
-  -->
   <div v-if="isOpen" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
     <!-- Overlay -->
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
 
-    <!-- Контент модалки (Mobile: Bottom Sheet, Desktop: Center Modal) -->
-    <div class="relative glass w-full md:max-w-4xl md:rounded-[30px] rounded-t-[30px] overflow-hidden animate-fade-in max-h-[90vh] flex flex-col z-10">
+    <!-- Контент модалки -->
+    <div class="relative z-10 flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-[30px] glass animate-fade-in">
       
       <!-- Заголовок -->
-      <div class="sticky top-0 bg-white/10 md:bg-dark-900/95 backdrop-blur border-b border-white/10 md:border-dark-700 p-4 md:p-6 flex items-center justify-between z-10">
+      <div class="sticky top-0 z-10 flex items-center justify-between border-b border-dark-700 bg-dark-900/95 p-4 backdrop-blur md:p-6">
         <h2 class="text-xl md:text-2xl font-bold text-white">🍕 {{ product.name }}</h2>
         <button @click="close" class="w-10 h-10 glass-button rounded-full flex items-center justify-center">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,23 +39,23 @@
 
             <!-- Питание -->
             <div class="glass p-3 md:p-4 rounded-[20px] md:rounded-2xl mb-4 md:mb-6">
-              <h3 class="text-xs md:text-sm font-semibold text-dark-300 mb-3">Пищевая ценность (на 100г)</h3>
+              <h3 class="text-xs md:text-sm font-semibold text-dark-300 mb-3">Пищевая ценность</h3>
               <div class="grid grid-cols-4 gap-2 md:gap-3">
                 <div class="text-center">
-                  <div class="text-xl md:text-2xl font-bold text-gradient">{{ product.calories }}</div>
-                  <div class="text-xs text-dark-400">ккал</div>
+                  <div class="text-xl md:text-2xl font-bold text-gradient">{{ totalCalories }}</div>
+                  <div class="text-xs text-dark-400">ккал за порцию</div>
                 </div>
                 <div class="text-center">
                   <div class="text-xl md:text-2xl font-bold text-blue-400">{{ product.protein }}г</div>
-                  <div class="text-xs text-dark-400">белки</div>
+                  <div class="text-xs text-dark-400">белки / 100г</div>
                 </div>
                 <div class="text-center">
                   <div class="text-xl md:text-2xl font-bold text-yellow-400">{{ product.fat }}г</div>
-                  <div class="text-xs text-dark-400">жиры</div>
+                  <div class="text-xs text-dark-400">жиры / 100г</div>
                 </div>
                 <div class="text-center">
                   <div class="text-xl md:text-2xl font-bold text-green-400">{{ product.carbohydrates }}г</div>
-                  <div class="text-xs text-dark-400">углеводы</div>
+                  <div class="text-xs text-dark-400">углеводы / 100г</div>
                 </div>
               </div>
             </div>
@@ -109,6 +103,18 @@ const categoryName = computed(() => {
   if (!props.product?.category_id) return ''
   const category = productsStore.getCategoryById(props.product.category_id)
   return category?.name || ''
+})
+
+const totalCalories = computed(() => {
+  if (!props.product) return 0
+  if (typeof props.product.total_calories === 'number') {
+    return props.product.total_calories
+  }
+
+  const caloriesPer100g = Number(props.product.calories || 0)
+  const weight = Number(props.product.weight || 0)
+  if (!caloriesPer100g || !weight) return 0
+  return Math.round((caloriesPer100g * weight) / 100)
 })
 
 const close = () => emit('close')

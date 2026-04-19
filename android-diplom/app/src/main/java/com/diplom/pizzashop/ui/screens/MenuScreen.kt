@@ -217,6 +217,13 @@ fun ProductDetailScreen(
             return@Scaffold
         }
 
+        val totalCalories = product.total_calories
+            ?: if ((product.calories ?: 0) > 0 && (product.weight ?: 0) > 0) {
+                ((product.calories ?: 0) * (product.weight ?: 0) + 50) / 100
+            } else {
+                0
+            }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -257,8 +264,8 @@ fun ProductDetailScreen(
                     Text("Пищевая ценность", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        product.calories?.let {
-                            NutritionBadge(label = "Калории", value = "$it ккал", modifier = Modifier.weight(1f))
+                        if (totalCalories > 0) {
+                            NutritionBadge(label = "Калории", value = "$totalCalories ккал", modifier = Modifier.weight(1f))
                         }
                         product.weight?.let {
                             NutritionBadge(label = "Вес", value = "$it г", modifier = Modifier.weight(1f))
@@ -267,15 +274,15 @@ fun ProductDetailScreen(
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         product.protein?.let {
-                            NutritionBadge(label = "Белки", value = "${it} г", modifier = Modifier.weight(1f))
+                            NutritionBadge(label = "Белки", value = "${it} г / 100г", modifier = Modifier.weight(1f))
                         }
                         product.fat?.let {
-                            NutritionBadge(label = "Жиры", value = "${it} г", modifier = Modifier.weight(1f))
+                            NutritionBadge(label = "Жиры", value = "${it} г / 100г", modifier = Modifier.weight(1f))
                         }
                     }
 
                     product.carbohydrates?.let {
-                        NutritionBadge(label = "Углеводы", value = "${it} г", modifier = Modifier.fillMaxWidth())
+                        NutritionBadge(label = "Углеводы", value = "${it} г / 100г", modifier = Modifier.fillMaxWidth())
                     }
                 }
             }

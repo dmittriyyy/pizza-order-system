@@ -45,6 +45,7 @@ class ProductResponse(BaseModel):
     created_at: datetime
     category: CategoryResponse = Field(..., description="Категория продукта")
     calories: int = 0
+    total_calories: int = Field(0, description="Полная калорийность порции")
     protein: float = 0
     fat: float = 0
     carbohydrates: float = 0

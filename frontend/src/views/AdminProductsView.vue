@@ -68,8 +68,8 @@
                   </span>
                 </td>
                 <td class="py-3 px-4 text-xs text-dark-400">
-                  <div>{{ product.calories }} ккал</div>
-                  <div>Б:{{ product.protein }} Ж:{{ product.fat }} У:{{ product.carbohydrates }}</div>
+                  <div>{{ getTotalCalories(product) }} ккал за порцию</div>
+                  <div>Б:{{ product.protein }} Ж:{{ product.fat }} У:{{ product.carbohydrates }} / 100г</div>
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="flex items-center justify-end space-x-2">
@@ -123,6 +123,15 @@ const selectedProduct = ref(null)
 const getCategoryName = (categoryId) => {
   const category = categories.value.find(c => c.id === categoryId)
   return category?.name || 'Без категории'
+}
+
+const getTotalCalories = (product) => {
+  if (typeof product.total_calories === 'number') return product.total_calories
+
+  const caloriesPer100g = Number(product.calories || 0)
+  const weight = Number(product.weight || 0)
+  if (!caloriesPer100g || !weight) return 0
+  return Math.round((caloriesPer100g * weight) / 100)
 }
 
 const fetchProducts = async () => {

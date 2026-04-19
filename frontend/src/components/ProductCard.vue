@@ -49,12 +49,13 @@
     </div>
   </div>
   
-  <!-- Модалка -->
-  <ProductModal 
-    :product="product" 
-    :is-open="isModalOpen" 
-    @close="isModalOpen = false" 
-  />
+  <Teleport to="body">
+    <ProductModal 
+      :product="product" 
+      :is-open="isModalOpen" 
+      @close="isModalOpen = false" 
+    />
+  </Teleport>
 </template>
 
 <script setup>

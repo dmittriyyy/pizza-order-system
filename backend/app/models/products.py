@@ -28,5 +28,11 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     category = relationship("Category", back_populates="products")
 
+    @property
+    def total_calories(self) -> int:
+        if not self.calories or not self.weight:
+            return 0
+        return round((self.calories * self.weight) / 100)
+
     def __repr__(self):
         return f"<Product(id={self.id}, name='{self.name}', price={self.price})>"
