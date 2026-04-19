@@ -38,5 +38,3 @@ TG_BOT_TOKEN=токен_бота_для_telegram_сервиса
 TELEGRAM_BOT_TOKEN=тот_же_токен_для_backend_валидации_initData
 TG_MINI_APP_URL=https://адрес-твоего-mini-app
 ```
-
-Если хочешь, можно использовать одно и то же значение токена и для `TG_BOT_TOKEN`, и для `TELEGRAM_BOT_TOKEN`.
