@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.diplom.pizzashop.data.model.ChatMessage
 import com.diplom.pizzashop.ui.theme.*
 import com.diplom.pizzashop.ui.viewmodels.CartViewModel
@@ -27,31 +28,83 @@ fun AIScreen(
 ) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Surface(color = OrangeAccent, modifier = Modifier.padding(bottom = 1.dp)) {
-            Row(
+    LaunchedEffect(viewModel.messages.size, viewModel.isTyping) {
+        val lastIndex = viewModel.messages.lastIndex + if (viewModel.isTyping) 1 else 0
+        if (lastIndex >= 0) {
+            listState.animateScrollToItem(lastIndex)
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = DarkBackground,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            Surface(color = OrangeAccent, modifier = Modifier.padding(bottom = 1.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("WOKI AI", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Онлайн • Отвечает быстро", color = Color.White.copy(0.8f), fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            Surface(
+                color = GlassSurface,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .imePadding(),
+                shape = RoundedCornerShape(30.dp)
             ) {
-                Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("WOKI AI", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text("Онлайн • Отвечает быстро", color = Color.White.copy(0.8f), fontSize = 12.sp)
+                Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        placeholder = { Text("Спросите о пицце...", color = TextSecondary) },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        if (inputText.isNotBlank()) {
+                            viewModel.sendMessage(inputText) {
+                                cartViewModel.loadCart()
+                            }
+                            inputText = ""
+                            coroutineScope.launch {
+                                val lastIndex = viewModel.messages.lastIndex + if (viewModel.isTyping) 1 else 0
+                                if (lastIndex >= 0) {
+                                    listState.animateScrollToItem(lastIndex)
+                                }
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.Send, contentDescription = "Send", tint = OrangeAccent)
+                    }
                 }
             }
         }
-
-        // Messages List
+    ) { paddingValues ->
         LazyColumn(
             state = listState,
             modifier = Modifier
-                .weight(1f)
-                .padding(16.dp),
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(viewModel.messages) { msg ->
@@ -67,34 +120,6 @@ fun AIScreen(
                             repeat(3) { Box(Modifier.size(8.dp).background(OrangeAccent.copy(0.5f), CircleShape)) }
                         }
                     }
-                }
-            }
-        }
-
-        // Input Field
-        Surface(color = GlassSurface, modifier = Modifier.padding(16.dp), shape = RoundedCornerShape(30.dp)) {
-            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    placeholder = { Text("Спросите о пицце...", color = TextSecondary) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = {
-                    if (inputText.isNotBlank()) {
-                        viewModel.sendMessage(inputText) {
-                            cartViewModel.loadCart()
-                        }
-                        inputText = ""
-                    }
-                }) {
-                    Icon(Icons.Default.Send, contentDescription = "Send", tint = OrangeAccent)
                 }
             }
         }

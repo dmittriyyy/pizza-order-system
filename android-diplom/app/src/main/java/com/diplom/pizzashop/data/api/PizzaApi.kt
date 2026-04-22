@@ -48,6 +48,9 @@ interface PizzaApi {
         @Query("limit") limit: Int = 50
     ): Response<List<Order>>
 
+    @GET("api/agents/tracking/{orderId}")
+    suspend fun getOrderTracking(@Path("orderId") orderId: Int): Response<TrackingResponse>
+
     @GET("api/orders/cook/pending")
     suspend fun getCookOrders(): Response<List<Order>>
 
@@ -76,6 +79,26 @@ interface PizzaApi {
 
     @POST("api/chat/send")
     suspend fun sendChatMessage(@Body request: ChatRequest): Response<ChatResponse>
+
+    @GET("api/agents/recommendations")
+    suspend fun getRecommendations(): Response<RecommendationResponse>
+
+    @GET("api/notifications")
+    suspend fun getNotifications(
+        @Query("unread_only") unreadOnly: Boolean = false,
+        @Query("limit") limit: Int = 50
+    ): Response<List<AppNotification>>
+
+    @POST("api/notifications/read-all")
+    suspend fun markNotificationsRead(): Response<ReadAllNotificationsResponse>
+
+    @POST("api/feedback")
+    suspend fun createFeedback(@Body request: CreateFeedbackRequest): Response<Feedback>
+
+    @GET("api/feedback/public")
+    suspend fun getPublicFeedback(
+        @Query("limit") limit: Int = 20
+    ): Response<List<Feedback>>
 
     // ==================== AUTH & PROFILE ====================
 
@@ -155,7 +178,8 @@ data class CreateOrderRequest(
     val customer_phone: String? = null,
     val customer_name: String? = null,
     val payment_method: String = "cash_on_delivery",
-    val order_comment: String? = null
+    val order_comment: String? = null,
+    val simulate_payment: Boolean = true
 )
 
 data class CreateProductRequest(
@@ -197,4 +221,54 @@ data class UpdateEmployeeRequest(
     val email: String? = null,
     val phone: String? = null,
     val telegram: String? = null
+)
+
+data class TrackingResponse(
+    val order_id: Int,
+    val status: String,
+    val message: String,
+    val latest_notification: String? = null
+)
+
+data class RecommendationSuggestion(
+    val product_id: Int,
+    val name: String,
+    val reason: String
+)
+
+data class RecommendationResponse(
+    val message: String,
+    val suggestions: List<RecommendationSuggestion>
+)
+
+data class AppNotification(
+    val id: Int,
+    val title: String,
+    val message: String,
+    val kind: String,
+    val channel: String,
+    val is_read: Boolean,
+    val order_id: Int? = null,
+    val created_at: String
+)
+
+data class ReadAllNotificationsResponse(
+    val updated: Int
+)
+
+data class CreateFeedbackRequest(
+    val order_id: Int,
+    val rating: Int,
+    val comment: String? = null
+)
+
+data class Feedback(
+    val id: Int,
+    val order_id: Int,
+    val rating: Int,
+    val comment: String? = null,
+    val sentiment: String,
+    val is_public: Boolean,
+    val needs_admin_attention: Boolean,
+    val created_at: String
 )

@@ -6,6 +6,7 @@ import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import AboutView from '@/views/AboutView.vue'
+import ReviewsView from '@/views/ReviewsView.vue'
 
 // Role-based views
 import CookOrdersView from '@/views/CookOrdersView.vue'
@@ -58,6 +59,14 @@ const router = createRouter({
       component: AboutView,
       meta: {
         title: 'О нас — Piazza Pizza',
+      },
+    },
+    {
+      path: '/reviews',
+      name: 'reviews',
+      component: ReviewsView,
+      meta: {
+        title: 'Отзывы — Piazza Pizza',
       },
     },
     

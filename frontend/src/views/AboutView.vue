@@ -79,9 +79,14 @@
         </p>
       </div>
 
-      <router-link to="/" class="btn-primary inline-block px-8 py-4">
-        Перейти в меню
-      </router-link>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <router-link to="/reviews" class="btn-secondary inline-block px-8 py-4">
+          Отзывы
+        </router-link>
+        <router-link to="/" class="btn-primary inline-block px-8 py-4">
+          Перейти в меню
+        </router-link>
+      </div>
     </div>
   </div>
 </template>

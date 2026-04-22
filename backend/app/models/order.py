@@ -36,6 +36,7 @@ class Order(Base):
     
     # время для курьера
     picked_up_at = Column(DateTime(timezone=True), nullable=True)
+    paid_at = Column(DateTime(timezone=True), nullable=True)
     
     # контактные данные
     customer_phone = Column(String, nullable=True)  # телефон клиента

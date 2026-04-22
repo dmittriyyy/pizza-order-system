@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
+from datetime import datetime, timezone
 from ..models.order import Order, OrderStatus
 from ..models.users import User, UserRole
 from ..repositories.order_repository import OrderRepository
 from fastapi import HTTPException, status
+from .notification_service import NotificationService
 
 
 # допустимые переходов статусов
@@ -32,6 +34,7 @@ class OrderService:
     def __init__(self, db: Session):
         self.db = db
         self.repository = OrderRepository(db)
+        self.notification_service = NotificationService(db)
 
     def get_user_orders(self, user_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
         return self.repository.get_orders_by_user(user_id, skip, limit)
@@ -80,7 +83,40 @@ class OrderService:
                 detail=reason
             )
         
-        return self.repository.update_order_status(order, new_status)
+        updated_order = self.repository.update_order_status(order, new_status)
+
+        if new_status == OrderStatus.paid and not updated_order.paid_at:
+            updated_order.paid_at = datetime.now(timezone.utc)
+            self.db.commit()
+            self.db.refresh(updated_order)
+
+        self.notification_service.notify_order_status(
+            updated_order,
+            self._status_message(updated_order),
+        )
+        return updated_order
+
+    def process_fake_payment(self, order: Order) -> Order:
+        order.status = OrderStatus.paid
+        order.paid_at = datetime.now(timezone.utc)
+        self.db.commit()
+        self.db.refresh(order)
+        self.notification_service.notify_order_status(
+            order,
+            f"Заказ #{order.id} успешно оплачен в тестовом режиме и передан в обработку.",
+        )
+        return order
+
+    def _status_message(self, order: Order) -> str:
+        messages = {
+            OrderStatus.paid: f"Заказ #{order.id} оплачен и передан на кухню.",
+            OrderStatus.cooking: f"Заказ #{order.id} уже готовится.",
+            OrderStatus.ready: f"Заказ #{order.id} готов и ждёт курьера.",
+            OrderStatus.delivering: f"Заказ #{order.id} передан курьеру.",
+            OrderStatus.completed: f"Заказ #{order.id} доставлен. Будем рады отзыву.",
+            OrderStatus.cancelled: f"Заказ #{order.id} отменён.",
+        }
+        return messages.get(order.status, f"Статус заказа #{order.id} обновлён: {order.status.value}")
 
     def get_order_stats(self) -> Dict:
         stats = {}

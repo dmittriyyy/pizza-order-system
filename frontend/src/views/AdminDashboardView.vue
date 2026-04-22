@@ -153,6 +153,37 @@
           </table>
         </div>
       </div>
+
+      <div class="premium-card p-6 mt-8">
+        <h2 class="text-2xl font-bold text-white mb-6">⚠️ Проблемные отзывы</h2>
+
+        <div v-if="problematicFeedback.length === 0" class="text-center py-8">
+          <p class="text-dark-400">Пока нет отзывов, требующих внимания администратора</p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div
+            v-for="item in problematicFeedback"
+            :key="item.id"
+            class="glass p-4 rounded-2xl border border-red-500/20"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-3">
+                <span class="text-white font-bold">Заказ #{{ item.order_id }}</span>
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                  Требует внимания
+                </span>
+              </div>
+              <span class="text-dark-400 text-sm">{{ item.user_login || 'Пользователь' }}</span>
+            </div>
+            <div class="text-primary-400 text-sm mb-2">{{ renderStars(item.rating) }}</div>
+            <p class="text-dark-300 text-sm mb-2">
+              {{ item.comment || 'Клиент оставил низкую оценку без комментария.' }}
+            </p>
+            <p class="text-dark-500 text-xs">{{ formatDateTime(item.created_at) }}</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -181,6 +212,7 @@ const stats = ref({
 
 const activeOrders = ref([])
 const completedOrders = ref([])
+const problematicFeedback = ref([])
 
 const getStatusClass = (status) => {
   const classes = {
@@ -222,6 +254,8 @@ const formatDateTime = (dateString) => {
     minute: '2-digit',
   })
 }
+
+const renderStars = (rating) => '★'.repeat(rating) + '☆'.repeat(5 - rating)
 
 const fetchStats = async () => {
   try {
@@ -307,13 +341,30 @@ const fetchStats = async () => {
   }
 }
 
+const fetchProblematicFeedback = async () => {
+  try {
+    const response = await api.get('/api/feedback/admin/problematic', {
+      headers: {
+        'Authorization': `Bearer ${authStore.getToken}`
+      }
+    })
+    problematicFeedback.value = response.data || []
+  } catch (error) {
+    console.error('Ошибка при загрузке проблемных отзывов:', error)
+  }
+}
+
 onMounted(() => {
   if (!authStore.isAuthenticated || !authStore.isAdmin) {
     router.push('/')
     return
   }
   fetchStats()
+  fetchProblematicFeedback()
   // Автообновление каждые 30 секунд
-  setInterval(fetchStats, 30000)
+  setInterval(() => {
+    fetchStats()
+    fetchProblematicFeedback()
+  }, 30000)
 })
 </script>

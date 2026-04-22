@@ -96,6 +96,7 @@ class OrderRepository:
     def create_order(self, user_id: int, total_price: float, delivery_address: str,
                      payment_method: str, items: list, 
                      delivery_comment: str = None, delivery_time: str = None,
+                     delivery_lat: float = None, delivery_lng: float = None,
                      customer_phone: str = None, customer_name: str = None,
                      order_comment: str = None) -> Order:
         new_order = Order(
@@ -104,6 +105,8 @@ class OrderRepository:
             delivery_address=delivery_address,
             delivery_comment=delivery_comment,
             delivery_time=delivery_time,
+            delivery_lat=delivery_lat,
+            delivery_lng=delivery_lng,
             customer_phone=customer_phone,
             customer_name=customer_name,
             order_comment=order_comment,

@@ -6,8 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.diplom.pizzashop.data.TokenManager
+import com.diplom.pizzashop.data.api.AppNotification
 import com.diplom.pizzashop.data.api.CreateOrderRequest
+import com.diplom.pizzashop.data.api.Feedback
 import com.diplom.pizzashop.data.api.PizzaApi
+import com.diplom.pizzashop.data.api.RecommendationResponse
 import com.diplom.pizzashop.data.api.RetrofitClient
 import com.diplom.pizzashop.data.api.UpdateEmployeeRequest
 import com.diplom.pizzashop.data.model.*
@@ -261,6 +264,62 @@ class AuthViewModel : ViewModel() {
         phone = null
         telegram = null
         defaultAddress = null
+    }
+}
+
+class AgentSupportViewModel : ViewModel() {
+    private val repository = PizzaRepository()
+
+    var notifications by mutableStateOf<List<AppNotification>>(emptyList())
+    var recommendation by mutableStateOf<RecommendationResponse?>(null)
+    var isLoading by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+
+    fun loadAll() {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                notifications = repository.getNotifications(unreadOnly = false).take(5)
+                recommendation = repository.getRecommendations()
+                error = null
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun markNotificationsRead() {
+        viewModelScope.launch {
+            try {
+                repository.markNotificationsRead()
+                notifications = notifications.map { it.copy(is_read = true) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+}
+
+class ReviewsViewModel : ViewModel() {
+    private val repository = PizzaRepository()
+
+    var reviews by mutableStateOf<List<Feedback>>(emptyList())
+    var isLoading by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+
+    fun loadReviews() {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                reviews = repository.getPublicFeedback()
+                error = null
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
     }
 }
 

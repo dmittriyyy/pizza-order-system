@@ -16,11 +16,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.diplom.pizzashop.ui.theme.*
+import com.diplom.pizzashop.ui.viewmodels.AgentSupportViewModel
 import com.diplom.pizzashop.ui.viewmodels.AuthViewModel
 
 @Composable
 fun MoreScreen(
     authViewModel: AuthViewModel = viewModel(),
+    agentSupportViewModel: AgentSupportViewModel = viewModel(),
     onNavigateToLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToProfile: () -> Unit,
@@ -31,6 +33,12 @@ fun MoreScreen(
     onNavigateToAdminProducts: () -> Unit = {},
     onNavigateToAdminEmployees: () -> Unit = {}
 ) {
+    LaunchedEffect(authViewModel.isAuthenticated) {
+        if (authViewModel.isAuthenticated) {
+            agentSupportViewModel.loadAll()
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp), 
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -84,6 +92,55 @@ fun MoreScreen(
             }
             item {
                 MoreCard(icon = Icons.Default.Info, title = "О нас", subtitle = "Информация о Piazza Pizza", onClick = onNavigateToAbout)
+            }
+            item {
+                HorizontalDivider(color = TextSecondary.copy(0.2f), modifier = Modifier.padding(vertical = 8.dp))
+            }
+            item {
+                Text("AI сопровождение", color = TextSecondary, fontSize = 12.sp)
+            }
+            agentSupportViewModel.recommendation?.let { recommendation ->
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = GlassSurface)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Персональные рекомендации", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(recommendation.message, color = TextSecondary, fontSize = 13.sp)
+                            recommendation.suggestions.take(3).forEach { suggestion ->
+                                Text("• ${suggestion.name}: ${suggestion.reason}", color = TextWhite, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            if (agentSupportViewModel.notifications.isNotEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = GlassSurface)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Уведомления", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                TextButton(onClick = { agentSupportViewModel.markNotificationsRead() }) {
+                                    Text("Прочитано", color = OrangeAccent, fontSize = 12.sp)
+                                }
+                            }
+                            agentSupportViewModel.notifications.take(3).forEach { notification ->
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(notification.title, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text(notification.message, color = TextSecondary, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             
             // Разделитель

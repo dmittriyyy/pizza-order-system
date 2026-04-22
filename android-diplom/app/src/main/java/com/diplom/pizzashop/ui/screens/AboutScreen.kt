@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,7 +20,8 @@ import com.diplom.pizzashop.ui.theme.*
 
 @Composable
 fun AboutScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenReviews: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -58,6 +60,17 @@ fun AboutScreen(
                     fontSize = 14.sp
                 )
             }
+        }
+
+        Button(
+            onClick = onOpenReviews,
+            colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Icon(Icons.Default.Star, contentDescription = null, tint = TextWhite)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Отзывы", color = TextWhite, fontWeight = FontWeight.SemiBold)
         }
     }
 }

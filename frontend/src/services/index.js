@@ -133,4 +133,50 @@ export const orderService = {
     const response = await api.get(`/api/orders/${id}`)
     return response.data
   },
+
+  async getTracking(orderId) {
+    const response = await api.get(`/api/agents/tracking/${orderId}`)
+    return response.data
+  },
+}
+
+export const recommendationService = {
+  async getPersonal() {
+    const response = await api.get('/api/agents/recommendations')
+    return response.data
+  },
+}
+
+export const notificationService = {
+  async getAll(params = {}) {
+    const response = await api.get('/api/notifications', { params })
+    return response.data
+  },
+
+  async markAllRead() {
+    const response = await api.post('/api/notifications/read-all')
+    return response.data
+  },
+}
+
+export const feedbackService = {
+  async getPublic(params = {}) {
+    const response = await api.get('/api/feedback/public', { params })
+    return response.data
+  },
+
+  async getMine() {
+    const response = await api.get('/api/feedback/my')
+    return response.data
+  },
+
+  async getProblematic(params = {}) {
+    const response = await api.get('/api/feedback/admin/problematic', { params })
+    return response.data
+  },
+
+  async create(payload) {
+    const response = await api.post('/api/feedback', payload)
+    return response.data
+  },
 }

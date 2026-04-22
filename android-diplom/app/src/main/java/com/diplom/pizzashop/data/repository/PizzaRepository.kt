@@ -75,6 +75,12 @@ class PizzaRepository {
         return if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
     }
 
+    suspend fun getOrderTracking(orderId: Int): TrackingResponse {
+        val response = api.getOrderTracking(orderId)
+        if (response.isSuccessful && response.body() != null) return response.body()!!
+        throw Exception("Ошибка получения статуса: ${response.errorBody()?.string()}")
+    }
+
     suspend fun getCookOrders(): List<Order> {
         val response = api.getCookOrders()
         return if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
@@ -137,6 +143,34 @@ class PizzaRepository {
         } catch (e: Exception) {
             Result.failure(Exception("Ошибка: ${e.message}"))
         }
+    }
+
+    suspend fun getRecommendations(): RecommendationResponse {
+        val response = api.getRecommendations()
+        if (response.isSuccessful && response.body() != null) return response.body()!!
+        throw Exception("Ошибка рекомендаций: ${response.errorBody()?.string()}")
+    }
+
+    suspend fun getNotifications(unreadOnly: Boolean = false): List<AppNotification> {
+        val response = api.getNotifications(unreadOnly = unreadOnly)
+        return if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
+    }
+
+    suspend fun markNotificationsRead(): Int {
+        val response = api.markNotificationsRead()
+        if (response.isSuccessful && response.body() != null) return response.body()!!.updated
+        throw Exception("Ошибка отметки уведомлений: ${response.errorBody()?.string()}")
+    }
+
+    suspend fun createFeedback(orderId: Int, rating: Int, comment: String? = null): Feedback {
+        val response = api.createFeedback(CreateFeedbackRequest(orderId, rating, comment))
+        if (response.isSuccessful && response.body() != null) return response.body()!!
+        throw Exception("Ошибка отправки отзыва: ${response.errorBody()?.string()}")
+    }
+
+    suspend fun getPublicFeedback(limit: Int = 20): List<Feedback> {
+        val response = api.getPublicFeedback(limit)
+        return if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
     }
 
     // ==================== СОТРУДНИКИ ====================

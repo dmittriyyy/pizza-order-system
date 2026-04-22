@@ -18,6 +18,9 @@ from .routes.order import router as orders_router
 from .routes.chat import router as chat_router
 from .routes.admin_employees import router as admin_employees_router
 from .routes.products_admin import router as products_admin_router
+from .routes.agents import router as agents_router
+from .routes.notifications import router as notifications_router
+from .routes.feedback import router as feedback_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -53,6 +56,9 @@ app.include_router(orders_router)
 app.include_router(chat_router)
 app.include_router(admin_employees_router)
 app.include_router(products_admin_router)
+app.include_router(agents_router)
+app.include_router(notifications_router)
+app.include_router(feedback_router)
 
 # 4. Инициализация БД при старте
 @app.on_event("startup")

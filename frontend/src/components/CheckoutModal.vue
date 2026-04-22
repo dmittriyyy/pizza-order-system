@@ -130,7 +130,7 @@
           :disabled="isSubmitting || !formData.delivery_address"
           class="btn-primary w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ isSubmitting ? 'Оформление...' : `Заказать на ${total} ₽` }}
+          {{ isSubmitting ? 'Оформление...' : `Оплатить и заказать на ${total} ₽` }}
         </button>
       </div>
     </div>

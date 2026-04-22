@@ -8,10 +8,14 @@ from sqlalchemy.orm import joinedload
 from .bootstrap import BACKEND_DIR 
 
 from app.database import SessionLocal
-from app.models import Cart, CartItem, Product
+from app.models import Cart, CartItem, Order, Product, User
 from app.repositories.cart_repository import CartRepository
+from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
+from app.services.order_tracking_service import OrderTrackingService
+from app.services.recommendation_service import RecommendationService
 from app.services.telegram_auth_service import TelegramAuthService
+from app.schemas.user import UserCreate
 
 
 @dataclass
@@ -23,6 +27,109 @@ class MenuItem:
 
 
 class TelegramPizzaService:
+    def get_linked_user(self, telegram_user_id: int) -> User | None:
+        db = SessionLocal()
+        try:
+            return db.query(User).filter(User.telegram_id == str(telegram_user_id)).first()
+        finally:
+            db.close()
+
+    def is_linked(self, telegram_user_id: int) -> bool:
+        return self.get_linked_user(telegram_user_id) is not None
+
+    def link_existing_account(
+        self,
+        telegram_user_id: int,
+        login: str,
+        password: str,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> str:
+        db = SessionLocal()
+        try:
+            telegram_id = str(telegram_user_id)
+            auth_service = AuthService(db)
+            user = auth_service.authenticate(login, password)
+
+            existing_link = db.query(User).filter(User.telegram_id == telegram_id).first()
+            if existing_link and existing_link.id != user.id:
+                return (
+                    "Этот Telegram уже привязан к другому аккаунту.\n"
+                    "Если нужно перепривязать, сначала очистим старую связь вручную."
+                )
+
+            if user.telegram_id and user.telegram_id != telegram_id:
+                return "Этот аккаунт уже привязан к другому Telegram."
+
+            user.telegram_id = telegram_id
+            user.telegram = f"@{username}" if username else user.telegram
+            if first_name and not user.first_name:
+                user.first_name = first_name
+            if last_name and not user.last_name:
+                user.last_name = last_name
+            db.commit()
+            db.refresh(user)
+
+            return (
+                f"Аккаунт привязан.\n"
+                f"Теперь бот работает как пользователь {user.login}."
+            )
+        finally:
+            db.close()
+
+    def unlink_account(self, telegram_user_id: int) -> str:
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.telegram_id == str(telegram_user_id)).first()
+            if not user:
+                return "Этот Telegram сейчас не привязан ни к одному аккаунту."
+
+            user.telegram_id = None
+            db.commit()
+            return f"Привязка снята с аккаунта {user.login}. Теперь можно выполнить /link заново."
+        finally:
+            db.close()
+
+    def register_account(
+        self,
+        telegram_user_id: int,
+        login: str,
+        password: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        username: str | None = None,
+    ) -> str:
+        db = SessionLocal()
+        try:
+            if db.query(User).filter(User.telegram_id == str(telegram_user_id)).first():
+                return "Этот Telegram уже привязан. Если хочешь другой аккаунт, сначала выполни /unlink."
+
+            auth_service = AuthService(db)
+            user = auth_service.register(
+                UserCreate(
+                    login=login,
+                    email=None,
+                    first_name=first_name,
+                    last_name=last_name,
+                    password=password,
+                )
+            )
+            user.telegram_id = str(telegram_user_id)
+            user.telegram = f"@{username}" if username else None
+            db.commit()
+            db.refresh(user)
+            return f"Регистрация завершена. Аккаунт {user.login} создан и привязан к Telegram."
+        finally:
+            db.close()
+
+    def require_link_message(self) -> str:
+        return (
+            "Сначала привяжи аккаунт командой /link.\n"
+            "Бот попросит логин и пароль от твоего аккаунта Piazza Pizza, "
+            "после этого сохранит Telegram ID и будет понимать, кто делает заказ."
+        )
+
     def _session_id(self, telegram_user_id: int) -> str:
         return f"tg_{telegram_user_id}"
 
@@ -32,6 +139,10 @@ class TelegramPizzaService:
     def _get_or_create_user_id(self, telegram_user_id: int, username: str | None, first_name: str | None, last_name: str | None) -> int:
         db = SessionLocal()
         try:
+            linked_user = db.query(User).filter(User.telegram_id == str(telegram_user_id)).first()
+            if linked_user:
+                return linked_user.id
+
             auth_service = TelegramAuthService(db)
             user = auth_service.get_or_create_user(
                 telegram_id=telegram_user_id,
@@ -195,5 +306,44 @@ class TelegramPizzaService:
                 db.delete(item)
             db.commit()
             return "Корзина очищена."
+        finally:
+            db.close()
+
+    def get_latest_order_status(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> str:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            order = (
+                db.query(Order)
+                .filter(Order.user_id == user_id)
+                .order_by(Order.created_at.desc())
+                .first()
+            )
+            if not order:
+                return "У тебя пока нет оформленных заказов."
+
+            tracking_service = OrderTrackingService(db)
+            tracking = tracking_service.build_status_response(order)
+            return (
+                f"Заказ #{tracking['order_id']}\n"
+                f"Статус: {tracking['status']}\n"
+                f"{tracking['message']}"
+            )
+        finally:
+            db.close()
+
+    def get_recommendations_text(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> str:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            recommendation_service = RecommendationService(db)
+            message, suggestions = recommendation_service.build_for_user(user_id)
+            if not suggestions:
+                return message
+
+            lines = [message, "", "Могу предложить:"]
+            for suggestion in suggestions[:3]:
+                lines.append(f"• {suggestion['name']} — {suggestion['reason']}")
+            return "\n".join(lines)
         finally:
             db.close()

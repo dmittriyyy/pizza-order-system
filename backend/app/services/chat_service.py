@@ -88,6 +88,99 @@ class ChatService:
         
         return json.dumps(menu_items, ensure_ascii=False)
 
+    def _sanitize_assistant_response(self, text: str) -> str:
+        cleaned = text or ""
+        cleaned = re.sub(r"\s*\((?:id|ID)\s*[:=]?\s*\d+\)", "", cleaned)
+        cleaned = re.sub(r"\b(?:id|ID)\s*[:=]?\s*\d+\b", "", cleaned)
+        cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
+
+    def _extract_calorie_budget(self, message: str) -> Optional[int]:
+        normalized = self._normalize_text(message)
+        match = re.search(r"\bдо\s*(\d+)\s*(?:ккал|калори(?:й|и|я))\b", normalized)
+        if match:
+            return int(match.group(1))
+        return None
+
+    def _is_combo_calorie_request(self, message: str) -> bool:
+        normalized = self._normalize_text(message)
+        return (
+            self._extract_calorie_budget(message) is not None
+            and "пицц" in normalized
+            and "бургер" in normalized
+        )
+
+    def _build_calorie_combo_response(self, message: str, menu_list: List[Dict[str, Any]]) -> Optional[str]:
+        if not self._is_combo_calorie_request(message):
+            return None
+
+        budget = self._extract_calorie_budget(message)
+        if budget is None:
+            return None
+
+        pizzas = [
+            item for item in menu_list
+            if "пицц" in self._normalize_text(item.get("category", ""))
+            and item.get("calories_total")
+        ]
+        burgers = [
+            item for item in menu_list
+            if "бургер" in self._normalize_text(item.get("category", ""))
+            and item.get("calories_total")
+        ]
+
+        if not pizzas or not burgers:
+            return "Не вижу в меню достаточно данных по калориям для пиццы и бургеров. Могу подсказать по отдельным позициям."
+
+        valid_pairs = []
+        all_pairs = []
+        for pizza in pizzas:
+            for burger in burgers:
+                total = int(pizza["calories_total"]) + int(burger["calories_total"])
+                pair = {
+                    "pizza": pizza,
+                    "burger": burger,
+                    "total": total
+                }
+                all_pairs.append(pair)
+                if total <= budget:
+                    valid_pairs.append(pair)
+
+        if valid_pairs:
+            best_pair = max(valid_pairs, key=lambda pair: pair["total"])
+            response_lines = [
+                f"Под лимит {budget} ккал лучше всего подходит такая пара:",
+                f"- {best_pair['pizza']['name']} — {best_pair['pizza']['calories_total']} ккал",
+                f"- {best_pair['burger']['name']} — {best_pair['burger']['calories_total']} ккал",
+                f"Итого: {best_pair['total']} ккал"
+            ]
+
+            alternatives = sorted(
+                [pair for pair in valid_pairs if pair != best_pair],
+                key=lambda pair: pair["total"],
+                reverse=True
+            )[:2]
+            if alternatives:
+                response_lines.append("")
+                response_lines.append("Ещё варианты в лимите:")
+                for pair in alternatives:
+                    response_lines.append(
+                        f"- {pair['pizza']['name']} + {pair['burger']['name']} — {pair['total']} ккал"
+                    )
+
+            response_lines.append("")
+            response_lines.append("Если хочешь, сразу добавлю выбранную пару в корзину.")
+            return "\n".join(response_lines)
+
+        lightest_pair = min(all_pairs, key=lambda pair: pair["total"])
+        return "\n".join([
+            f"Пары пицца + бургер до {budget} ккал в текущем меню нет.",
+            f"Самая лёгкая комбинация сейчас: {lightest_pair['pizza']['name']} — {lightest_pair['pizza']['calories_total']} ккал и {lightest_pair['burger']['name']} — {lightest_pair['burger']['calories_total']} ккал.",
+            f"Итого: {lightest_pair['total']} ккал.",
+            "Если хочешь, подберу вариант до лимита с пиццей и напитком или с бургером и напитком."
+        ])
+
     def _normalize_text(self, text: str) -> str:
         text = (text or "").lower().replace("ё", "е")
         text = re.sub(r"[\"'`«»()!?.,:;]", " ", text)
@@ -455,6 +548,10 @@ class ChatService:
             menu_list = json.loads(menu_json)
             menu_ids = "\n".join([f"- {p['name']} = id {p['id']}" for p in menu_list])
 
+            calorie_combo_response = self._build_calorie_combo_response(message, menu_list)
+            if calorie_combo_response:
+                return calorie_combo_response
+
             parsed_items = self._extract_items_from_message(message, menu_list)
             if parsed_items:
                 return self._add_items_to_cart(parsed_items, user_id, session_id)
@@ -518,7 +615,7 @@ If multiple items added — calculate and show total sum at the end."""
             if result.get("tool_calls"):
                 return self._handle_tool_calls(result["tool_calls"], user_id, session_id)
 
-            return result.get("content", "")
+            return self._sanitize_assistant_response(result.get("content", ""))
 
         except Exception as e:
             import traceback

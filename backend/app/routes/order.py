@@ -46,6 +46,7 @@ def create_order(
     ]
 
     repo = OrderRepository(db)
+    service = OrderService(db)
     try:
         new_order = repo.create_order(
             user_id=current_user.id,
@@ -53,12 +54,16 @@ def create_order(
             delivery_address=order_data.delivery_address,
             delivery_comment=order_data.delivery_comment,
             delivery_time=order_data.delivery_time,
+            delivery_lat=order_data.delivery_lat,
+            delivery_lng=order_data.delivery_lng,
             customer_phone=order_data.customer_phone or current_user.login,
             customer_name=order_data.customer_name or f"{current_user.first_name or ''} {current_user.last_name or ''}".strip(),
             order_comment=order_data.order_comment,
             payment_method=order_data.payment_method.value if hasattr(order_data.payment_method, 'value') else order_data.payment_method,
             items=items
         )
+        if order_data.simulate_payment:
+            new_order = service.process_fake_payment(new_order)
         cart_repo.clear_cart(cart)
         return new_order
     except Exception as e:
@@ -170,13 +175,14 @@ def start_delivery_order(
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")
     
+    updated_order = service.update_order_status(order_id, OrderStatus.delivering, current_user)
+
     from datetime import datetime, timezone
-    order.status = OrderStatus.delivering
-    order.picked_up_at = datetime.now(timezone.utc)
+    updated_order.picked_up_at = datetime.now(timezone.utc)
     db.commit()
-    db.refresh(order)
-    
-    return order
+    db.refresh(updated_order)
+
+    return updated_order
 
 
 @router.patch("/{order_id}/status/completed", response_model=OrderResponse, dependencies=[Depends(require_courier)])

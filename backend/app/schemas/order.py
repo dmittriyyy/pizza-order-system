@@ -11,6 +11,7 @@ class OrderItemCreate(BaseModel):
 class OrderCreate(BaseModel):
     delivery_address: str
     payment_method: PaymentMethod
+    simulate_payment: bool = True
     
     delivery_comment: Optional[str] = None  
     delivery_time: Optional[str] = None 
@@ -58,6 +59,7 @@ class OrderResponse(BaseModel):
     order_comment: Optional[str] = None
     created_at: datetime
     picked_up_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
     items: List[OrderItemResponse]
 
     class Config:

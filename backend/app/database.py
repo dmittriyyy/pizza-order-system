@@ -36,3 +36,9 @@ def _ensure_sqlite_columns():
         if "telegram_id" not in existing_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN telegram_id VARCHAR"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_telegram_id ON users (telegram_id)"))
+
+    if "orders" in inspector.get_table_names():
+        order_columns = {column["name"] for column in inspector.get_columns("orders")}
+        with engine.begin() as connection:
+            if "paid_at" not in order_columns:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN paid_at DATETIME"))

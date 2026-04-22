@@ -49,6 +49,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     object Checkout : Screen("checkout", "Оформление", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong)
     object Profile : Screen("profile", "Профиль", Icons.Outlined.Person, Icons.Filled.Person)
     object About : Screen("about", "О нас", Icons.Outlined.Info, Icons.Filled.Info)
+    object Reviews : Screen("reviews", "Отзывы", Icons.Outlined.Star, Icons.Filled.Star)
     object Kitchen : Screen("kitchen", "Кухня", Icons.Outlined.Kitchen, Icons.Filled.Kitchen)
     object Delivery : Screen("delivery", "Доставка", Icons.Outlined.LocalShipping, Icons.Filled.LocalShipping)
     object AdminDashboard : Screen("admin_dashboard", "Админ панель", Icons.Outlined.AdminPanelSettings, Icons.Filled.AdminPanelSettings)
@@ -156,7 +157,13 @@ fun PizzaApp() {
                 )
             }
             composable(Screen.About.route) {
-                AboutScreen(onBack = { navController.popBackStack() })
+                AboutScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenReviews = { navController.navigate(Screen.Reviews.route) }
+                )
+            }
+            composable(Screen.Reviews.route) {
+                ReviewsScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.AdminAllOrders.route) { AdminAllOrdersScreen(onNavigateBack = { navController.popBackStack() }) }
             composable(

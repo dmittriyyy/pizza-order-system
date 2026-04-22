@@ -62,6 +62,44 @@
       </div>
     </section>
 
+    <section v-if="authStore.isAuthenticated" class="py-12 px-4">
+      <div class="max-w-6xl mx-auto">
+        <div class="premium-card p-8">
+          <div class="mb-8">
+            <div>
+              <p class="text-primary-400 text-sm font-semibold uppercase tracking-[0.2em] mb-2">AI Рекомендации</p>
+              <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Здравствуйте! Мы рады видеть вас снова</h2>
+              <p class="text-dark-500 text-sm md:text-base mb-3">Персонально для вас</p>
+              <p class="text-dark-300 text-base md:text-lg max-w-3xl">{{ recommendation.message }}</p>
+            </div>
+          </div>
+
+          <div v-if="ordersCount >= 3 && recommendation.suggestions?.length" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <article
+              v-for="item in recommendation.suggestions.slice(0, 3)"
+              :key="item.product_id"
+              class="glass rounded-3xl p-5 min-h-[220px] flex flex-col"
+            >
+              <p class="text-white text-xl font-bold mb-2">{{ item.name }}</p>
+              <p class="text-dark-400 text-sm leading-relaxed mb-4 flex-1">{{ item.reason }}</p>
+              <button
+                @click="handleAddRecommendation(item.product_id)"
+                class="btn-primary w-full py-3 text-sm mt-auto"
+              >
+                В корзину
+              </button>
+            </article>
+          </div>
+          <div v-else class="glass p-5 rounded-3xl">
+            <p class="text-white text-lg font-bold mb-2">Рекомендации скоро появятся</p>
+            <p class="text-dark-400 text-sm leading-relaxed">
+              Когда история заказов станет чуть богаче, я смогу точнее подобрать блюда и дополнения именно для вас.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Меню (Mobile: Glass background, Desktop: Dark background) -->
     <section id="menu" class="py-8 md:py-16 px-4 bg-white/5 backdrop-blur-sm md:bg-dark-900/50">
       <div class="max-w-7xl mx-auto">
@@ -132,22 +170,80 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ProductCard from '@/components/ProductCard.vue'
 import CategoryFilter from '@/components/CategoryFilter.vue'
 import { useProductsStore } from '@/stores/products'
+import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { orderService, recommendationService } from '@/services'
 
 const productsStore = useProductsStore()
+const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const filteredProducts = computed(() => productsStore.filteredProducts)
+const recommendation = ref({
+  message: 'Мы подбираем предложения с учётом ваших заказов и вкусовых предпочтений.',
+  suggestions: [],
+})
+const ordersCount = ref(0)
+
+const loadRecommendations = async () => {
+  if (!authStore.isAuthenticated) {
+    ordersCount.value = 0
+    recommendation.value = { message: '', suggestions: [] }
+    return
+  }
+
+  try {
+    if (!authStore.user && authStore.token) {
+      await authStore.fetchCurrentUser()
+    }
+
+    const orders = await orderService.getAll({ limit: 20 })
+    ordersCount.value = Array.isArray(orders) ? orders.length : 0
+
+    if (ordersCount.value >= 3) {
+      recommendation.value = await recommendationService.getPersonal()
+    } else {
+      recommendation.value = {
+        message: 'Мы уже запоминаем ваши предпочтения. После нескольких заказов здесь появятся персональные рекомендации для вас.',
+        suggestions: [],
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при загрузке AI-рекомендаций:', error)
+    recommendation.value = {
+      message: 'Сейчас не удалось загрузить персональные рекомендации, но этот блок останется доступен.',
+      suggestions: [],
+    }
+  }
+}
+
+const handleAddRecommendation = async (productId) => {
+  try {
+    await cartStore.addToCart(productId, 1)
+  } catch (error) {
+    console.error('Ошибка при добавлении рекомендации в корзину:', error)
+  }
+}
 
 onMounted(async () => {
   try {
     await productsStore.initialize()
     console.log('Товары загружены:', productsStore.products.length)
     console.log('Категории:', productsStore.categories.length)
+    await loadRecommendations()
   } catch (error) {
     console.error('Ошибка при загрузке меню:', error)
   }
 })
+
+watch(
+  () => [authStore.token, authStore.user?.id],
+  async () => {
+    await loadRecommendations()
+  }
+)
 </script>

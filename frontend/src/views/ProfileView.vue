@@ -135,8 +135,75 @@
                     </div>
                   </div>
                 </div>
+
+                <div
+                  v-if="canLeaveFeedback(order)"
+                  class="border-t border-dark-700 pt-3 mt-3 flex items-center justify-between"
+                >
+                  <p class="text-dark-400 text-xs">
+                    Заказ завершён. Можно оставить отзыв для AI-агента постобслуживания.
+                  </p>
+                  <button
+                    @click="openFeedbackModal(order)"
+                    class="btn-secondary px-4 py-2 text-xs"
+                  >
+                    Оставить отзыв
+                  </button>
+                </div>
+
+                <div
+                  v-else-if="hasFeedback(order.id)"
+                  class="border-t border-dark-700 pt-3 mt-3"
+                >
+                  <p class="text-green-400 text-xs">Отзыв по этому заказу уже оставлен.</p>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="feedbackModalOpen"
+        class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      >
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeFeedbackModal"></div>
+        <div class="relative premium-card w-full max-w-lg p-6 z-10">
+          <h3 class="text-2xl font-bold text-white mb-4">Отзыв о заказе #{{ selectedOrder?.id }}</h3>
+          <div class="mb-4">
+            <label class="block text-dark-300 text-sm mb-2">Оценка</label>
+            <div class="flex gap-2">
+              <button
+                v-for="value in 5"
+                :key="value"
+                @click="feedbackForm.rating = value"
+                :class="[
+                  'w-11 h-11 rounded-full text-lg font-bold transition-colors',
+                  feedbackForm.rating >= value ? 'bg-primary-500 text-white' : 'glass text-dark-300'
+                ]"
+              >
+                {{ value }}
+              </button>
+            </div>
+          </div>
+          <div class="mb-6">
+            <label class="block text-dark-300 text-sm mb-2">Комментарий</label>
+            <textarea
+              v-model="feedbackForm.comment"
+              rows="4"
+              class="input-primary"
+              placeholder="Что понравилось или что пошло не так?"
+            ></textarea>
+          </div>
+          <div class="flex items-center justify-end gap-3">
+            <button @click="closeFeedbackModal" class="btn-secondary px-5 py-3 text-sm">Отмена</button>
+            <button
+              @click="submitFeedback"
+              :disabled="isSubmittingFeedback || !feedbackForm.rating"
+              class="btn-primary px-5 py-3 text-sm disabled:opacity-50"
+            >
+              {{ isSubmittingFeedback ? 'Отправка...' : 'Отправить отзыв' }}
+            </button>
           </div>
         </div>
       </div>
@@ -149,6 +216,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import { feedbackService } from '@/services'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -170,8 +238,16 @@ const formData = reactive({
 })
 
 const orders = ref([])
+const feedback = ref([])
 const isLoading = ref(true)
 const isSaving = ref(false)
+const feedbackModalOpen = ref(false)
+const selectedOrder = ref(null)
+const isSubmittingFeedback = ref(false)
+const feedbackForm = reactive({
+  rating: 5,
+  comment: '',
+})
 
 const translateRole = (role) => {
   const roles = {
@@ -271,6 +347,51 @@ const fetchOrders = async () => {
   }
 }
 
+const fetchFeedback = async () => {
+  try {
+    feedback.value = await feedbackService.getMine()
+  } catch (error) {
+    console.error('Ошибка при загрузке отзывов:', error)
+  }
+}
+
+const hasFeedback = (orderId) => feedback.value.some((item) => item.order_id === orderId)
+
+const canLeaveFeedback = (order) => order.status === 'completed' && !hasFeedback(order.id)
+
+const openFeedbackModal = (order) => {
+  selectedOrder.value = order
+  feedbackForm.rating = 5
+  feedbackForm.comment = ''
+  feedbackModalOpen.value = true
+}
+
+const closeFeedbackModal = () => {
+  feedbackModalOpen.value = false
+  selectedOrder.value = null
+}
+
+const submitFeedback = async () => {
+  if (!selectedOrder.value) return
+
+  isSubmittingFeedback.value = true
+  try {
+    const created = await feedbackService.create({
+      order_id: selectedOrder.value.id,
+      rating: feedbackForm.rating,
+      comment: feedbackForm.comment,
+    })
+    feedback.value = [created, ...feedback.value]
+    closeFeedbackModal()
+    alert('✅ Отзыв отправлен')
+  } catch (error) {
+    console.error('Ошибка при отправке отзыва:', error)
+    alert(error.response?.data?.detail || '❌ Ошибка при отправке отзыва')
+  } finally {
+    isSubmittingFeedback.value = false
+  }
+}
+
 const handleLogout = () => {
   authStore.logout()
   router.push('/')
@@ -283,5 +404,6 @@ onMounted(() => {
   }
   fetchProfile()
   fetchOrders()
+  fetchFeedback()
 })
 </script>
