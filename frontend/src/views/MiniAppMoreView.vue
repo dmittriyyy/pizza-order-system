@@ -19,6 +19,30 @@
       </div>
 
       <div v-else class="space-y-4">
+        <button v-if="authStore.isAdmin" class="mini-more-card" @click="router.push('/admin')">
+          <span class="mini-more-icon">⚙️</span>
+          <span>
+            <span class="mini-more-title">Админ панель</span>
+            <span class="mini-more-subtitle">Заказы, сотрудники, меню и проблемные отзывы</span>
+          </span>
+        </button>
+
+        <button v-if="authStore.isCook" class="mini-more-card" @click="router.push('/cook/orders')">
+          <span class="mini-more-icon">👨‍🍳</span>
+          <span>
+            <span class="mini-more-title">Панель повара</span>
+            <span class="mini-more-subtitle">Готовка и управление статусами кухни</span>
+          </span>
+        </button>
+
+        <button v-if="authStore.isCourier" class="mini-more-card" @click="router.push('/courier/orders')">
+          <span class="mini-more-icon">🚚</span>
+          <span>
+            <span class="mini-more-title">Панель курьера</span>
+            <span class="mini-more-subtitle">Готовые заказы и доставка клиентам</span>
+          </span>
+        </button>
+
         <button class="mini-more-card" @click="router.push('/profile')">
           <span class="mini-more-icon">👤</span>
           <span>
