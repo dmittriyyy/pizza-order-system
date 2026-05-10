@@ -1,5 +1,26 @@
 <template>
   <div class="min-h-screen">
+    <section v-if="isTelegramMiniApp && !authStore.isAuthenticated" class="px-4 pt-4">
+      <div class="max-w-7xl mx-auto">
+        <div class="glass rounded-[28px] p-4 md:p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-white font-semibold text-base md:text-lg">Войдите, чтобы заказывать в Mini App</p>
+            <p class="text-dark-300 text-sm md:text-base mt-1">
+              После входа станут доступны корзина, оформление заказа и история.
+            </p>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <router-link to="/login" class="btn-primary px-6 py-3 text-center">
+              Войти
+            </router-link>
+            <router-link to="/register" class="btn-secondary px-6 py-3 text-center">
+              Регистрация
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Герой секция -->
     <section class="relative h-[600px] flex items-center justify-center overflow-hidden">
       <!-- Фон -->
@@ -62,39 +83,51 @@
       </div>
     </section>
 
-    <section v-if="authStore.isAuthenticated" class="py-12 px-4">
-      <div class="max-w-6xl mx-auto">
-        <div class="premium-card p-8">
-          <div class="mb-8">
-            <div>
-              <p class="text-primary-400 text-sm font-semibold uppercase tracking-[0.2em] mb-2">AI Рекомендации</p>
-              <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">Здравствуйте! Мы рады видеть вас снова</h2>
-              <p class="text-dark-500 text-sm md:text-base mb-3">Персонально для вас</p>
-              <p class="text-dark-300 text-base md:text-lg max-w-3xl">{{ recommendation.message }}</p>
-            </div>
+    <section v-if="authStore.isAuthenticated" class="px-4 pb-4 md:pb-6">
+      <div class="max-w-7xl mx-auto">
+        <div class="premium-card p-4 md:p-5">
+          <p class="text-primary-400 text-xs font-semibold uppercase tracking-[0.18em] text-center mb-2">
+            AI Рекомендации
+          </p>
+
+          <div class="flex items-center justify-center gap-2 mb-3">
+            <h2 class="text-base md:text-lg font-bold text-white text-center">Что взять сегодня</h2>
+            <span
+              v-if="isRecommendationsLoading"
+              class="inline-block w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"
+            ></span>
           </div>
 
-          <div v-if="ordersCount >= 3 && recommendation.suggestions?.length" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <p class="text-dark-300 text-sm md:text-base text-center compact-message max-w-3xl mx-auto">
+            {{ recommendation.message }}
+          </p>
+
+          <div
+            v-if="ordersCount >= 3 && recommendation.suggestions?.length"
+            class="mt-4 flex gap-3 overflow-x-auto pb-1 scrollbar-hide"
+          >
             <article
               v-for="item in recommendation.suggestions.slice(0, 3)"
               :key="item.product_id"
-              class="glass rounded-3xl p-5 min-h-[220px] flex flex-col"
+              class="glass rounded-2xl p-4 min-w-[220px] md:min-w-[240px] flex-shrink-0"
             >
-              <p class="text-white text-xl font-bold mb-2">{{ item.name }}</p>
-              <p class="text-dark-400 text-sm leading-relaxed mb-4 flex-1">{{ item.reason }}</p>
-              <button
-                @click="handleAddRecommendation(item.product_id)"
-                class="btn-primary w-full py-3 text-sm mt-auto"
-              >
-                В корзину
-              </button>
+              <p class="text-white text-sm md:text-base font-bold leading-tight mb-2">{{ item.name }}</p>
+              <p class="text-dark-400 text-xs md:text-sm compact-reason">
+                {{ item.reason }}
+              </p>
             </article>
           </div>
-          <div v-else class="glass p-5 rounded-3xl">
-            <p class="text-white text-lg font-bold mb-2">Рекомендации скоро появятся</p>
-            <p class="text-dark-400 text-sm leading-relaxed">
-              Когда история заказов станет чуть богаче, я смогу точнее подобрать блюда и дополнения именно для вас.
+
+          <div v-else class="mt-4 glass rounded-2xl px-4 py-3">
+            <p class="text-dark-300 text-sm leading-relaxed text-center">
+              Сделайте ещё пару заказов, и здесь появятся короткие персональные подсказки.
             </p>
+          </div>
+
+          <div class="mt-4 flex justify-center">
+            <a href="#menu" class="btn-primary px-6 py-3 text-sm md:text-base text-center">
+              Смотреть меню
+            </a>
           </div>
         </div>
       </div>
@@ -177,24 +210,30 @@ import { useProductsStore } from '@/stores/products'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { orderService, recommendationService } from '@/services'
+import { isTelegramMiniApp as detectTelegramMiniApp } from '@/services/telegram'
 
 const productsStore = useProductsStore()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 
 const filteredProducts = computed(() => productsStore.filteredProducts)
+const isTelegramMiniApp = computed(() => detectTelegramMiniApp())
 const recommendation = ref({
   message: 'Мы подбираем предложения с учётом ваших заказов и вкусовых предпочтений.',
   suggestions: [],
 })
 const ordersCount = ref(0)
+const isRecommendationsLoading = ref(false)
 
 const loadRecommendations = async () => {
   if (!authStore.isAuthenticated) {
     ordersCount.value = 0
     recommendation.value = { message: '', suggestions: [] }
+    isRecommendationsLoading.value = false
     return
   }
+
+  isRecommendationsLoading.value = true
 
   try {
     if (!authStore.user && authStore.token) {
@@ -218,6 +257,8 @@ const loadRecommendations = async () => {
       message: 'Сейчас не удалось загрузить персональные рекомендации, но этот блок останется доступен.',
       suggestions: [],
     }
+  } finally {
+    isRecommendationsLoading.value = false
   }
 }
 
@@ -230,13 +271,13 @@ const handleAddRecommendation = async (productId) => {
 }
 
 onMounted(async () => {
-  try {
-    await productsStore.initialize()
-    console.log('Товары загружены:', productsStore.products.length)
-    console.log('Категории:', productsStore.categories.length)
-    await loadRecommendations()
-  } catch (error) {
-    console.error('Ошибка при загрузке меню:', error)
+  const [productsResult] = await Promise.allSettled([
+    productsStore.initialize(),
+    loadRecommendations(),
+  ])
+
+  if (productsResult.status === 'rejected') {
+    console.error('Ошибка при загрузке меню:', productsResult.reason)
   }
 })
 
@@ -247,3 +288,19 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.compact-message {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.compact-reason {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

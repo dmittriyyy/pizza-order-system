@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .config import settings
 from .database import init_db
+from .database import SessionLocal
+from .services.admin_telegram_service import AdminTelegramService
 
 # Импорт роутеров (строго по файловой структуре проекта)
 from .routes.auth import router as auth_router
@@ -65,6 +67,11 @@ app.include_router(feedback_router)
 def on_startup():
     print("🚀 Запуск сервера... Инициализация БД.")
     init_db()
+    db = SessionLocal()
+    try:
+        AdminTelegramService(db).sync_from_settings()
+    finally:
+        db.close()
 
 @app.get("/")
 def root():

@@ -1,4 +1,5 @@
 from app.database import SessionLocal, init_db, engine, Base
+from app.config import settings
 from app.models.users import User, UserRole, UserStatus
 from app.models.category import Category
 from app.models.products import Product
@@ -6,6 +7,9 @@ from app.services.auth_service import get_password_hash
 import json
 
 def seed_data():
+    admin_telegram = settings.admin_telegram_username
+    if admin_telegram and not admin_telegram.startswith("@"):
+        admin_telegram = f"@{admin_telegram}"
 
     Base.metadata.drop_all(bind=engine)
     init_db()
@@ -202,12 +206,13 @@ def seed_data():
             User(
                 first_name="Артём",
                 last_name="Админов",
-                login="admin_boss",
+                login=settings.admin_login,
                 password_hash=get_password_hash("pass_1"),
                 role=UserRole.admin,
                 email="admin@pizza.ru",
                 phone="+7 (999) 000-00-01",
-                telegram="@admin_boss",
+                telegram=admin_telegram or "@admin_boss",
+                telegram_id=settings.admin_telegram_id,
                 default_address="ул. Ленина, д. 1, оф. 100"
             ),
             User(

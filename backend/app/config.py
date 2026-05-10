@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     telegram_bot_token: str | None = None
     telegram_auth_max_age_seconds: int = 86400
+    telegram_auto_link_logins: str = ""
+    admin_login: str = "admin_boss"
+    admin_telegram_username: str | None = None
+    admin_telegram_id: str | None = None
 
 
     class Config:

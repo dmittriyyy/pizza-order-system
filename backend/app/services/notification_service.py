@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..models.notification import Notification
 from ..models.order import Order
 from ..models.users import User, UserRole
+from .admin_telegram_service import AdminTelegramService
 
 
 class NotificationService:
@@ -67,6 +68,7 @@ class NotificationService:
         self._send_telegram_to_user(order.user, message)
 
     def notify_admins(self, title: str, message: str, order_id: Optional[int] = None) -> None:
+        AdminTelegramService(self.db).sync_from_settings()
         admins = self.db.query(User).filter(User.role == UserRole.admin).all()
         for admin in admins:
             self.create_in_app(

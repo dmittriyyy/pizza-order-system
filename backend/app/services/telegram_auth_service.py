@@ -17,6 +17,14 @@ class TelegramAuthService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _auto_link_logins(self) -> set[str]:
+        raw_value = settings.telegram_auto_link_logins or ""
+        return {
+            login.strip().lower()
+            for login in raw_value.split(",")
+            if login.strip()
+        }
+
     def _secret_key(self) -> bytes:
         if not settings.telegram_bot_token:
             raise HTTPException(
@@ -95,6 +103,21 @@ class TelegramAuthService:
                 self.db.commit()
                 self.db.refresh(user)
             return user
+
+        if username:
+            normalized_username = username.strip().lower()
+            if normalized_username in self._auto_link_logins():
+                existing_user = self.db.query(User).filter(User.login == normalized_username).first()
+                if existing_user and not existing_user.telegram_id:
+                    existing_user.telegram_id = telegram_id
+                    existing_user.telegram = f"@{username}"
+                    if first_name and not existing_user.first_name:
+                        existing_user.first_name = first_name
+                    if last_name and not existing_user.last_name:
+                        existing_user.last_name = last_name
+                    self.db.commit()
+                    self.db.refresh(existing_user)
+                    return existing_user
 
         base_login = f"tg_{telegram_id}"
         login = base_login

@@ -6,6 +6,10 @@ export function isTelegramMiniApp() {
   return Boolean(getTelegramWebApp()?.initData)
 }
 
+export function canUseTelegramAuth() {
+  return Boolean(getTelegramWebApp()?.initData)
+}
+
 export function initTelegramWebApp() {
   const webApp = getTelegramWebApp()
   if (!webApp) return null

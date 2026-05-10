@@ -94,6 +94,11 @@ class OrderService:
             updated_order,
             self._status_message(updated_order),
         )
+        self.notification_service.notify_admins(
+            title="Статус заказа изменён",
+            message=f"Заказ #{updated_order.id}: {updated_order.status.value}",
+            order_id=updated_order.id,
+        )
         return updated_order
 
     def process_fake_payment(self, order: Order) -> Order:
@@ -104,6 +109,11 @@ class OrderService:
         self.notification_service.notify_order_status(
             order,
             f"Заказ #{order.id} успешно оплачен в тестовом режиме и передан в обработку.",
+        )
+        self.notification_service.notify_admins(
+            title="Новый оплаченный заказ",
+            message=f"Заказ #{order.id} оплачен и передан в обработку.",
+            order_id=order.id,
         )
         return order
 

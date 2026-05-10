@@ -42,6 +42,7 @@ import com.diplom.pizzashop.data.TokenManager
 sealed class Screen(val route: String, val title: String, val icon: ImageVector, val selectedIcon: ImageVector) {
     object Menu : Screen("menu", "Меню", Icons.Outlined.LocalPizza, Icons.Filled.LocalPizza)
     object AI : Screen("ai", "AI", Icons.Outlined.SmartToy, Icons.Filled.SmartToy)
+    object Recommendations : Screen("recommendations", "Рекомендации", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome)
     object Cart : Screen("cart", "Корзина", Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart)
     object More : Screen("more", "Ещё", Icons.Outlined.MoreHoriz, Icons.Filled.MoreHoriz)
     object Login : Screen("login", "Вход", Icons.AutoMirrored.Outlined.Login, Icons.AutoMirrored.Filled.Login)
@@ -97,13 +98,25 @@ fun PizzaApp() {
         ) {
             composable(Screen.Menu.route) { 
                 MenuScreen(
+                    authViewModel = authViewModel,
                     menuViewModel = menuViewModel, 
                     cartViewModel = cartViewModel,
-                    onProductClick = { product -> navController.navigate("product_detail/${product.id}") } 
+                    onProductClick = { product -> navController.navigate("product_detail/${product.id}") },
+                    onOpenAI = { navController.navigate(Screen.Recommendations.route) }
                 ) 
             }
             composable(Screen.AI.route) {
                 AIScreen(cartViewModel = cartViewModel)
+            }
+            composable(Screen.Recommendations.route) {
+                RecommendationsScreen(
+                    isLoading = menuViewModel.isRecommendationsLoading,
+                    message = menuViewModel.recommendation.message,
+                    suggestions = menuViewModel.recommendation.suggestions,
+                    productsById = menuViewModel.products.associateBy { it.id },
+                    onBack = { navController.popBackStack() },
+                    onAddToCart = { productId -> cartViewModel.addToCart(productId) }
+                )
             }
             composable(Screen.Cart.route) { 
                 CartScreen(

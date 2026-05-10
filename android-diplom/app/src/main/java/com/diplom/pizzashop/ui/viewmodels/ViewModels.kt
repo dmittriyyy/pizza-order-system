@@ -26,6 +26,14 @@ class MenuViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var selectedCategory by mutableStateOf<Int?>(null)
+    var recommendation by mutableStateOf(
+        RecommendationResponse(
+            message = "Мы подбираем предложения с учётом ваших заказов и вкусовых предпочтений.",
+            suggestions = emptyList()
+        )
+    )
+    var ordersCount by mutableStateOf(0)
+    var isRecommendationsLoading by mutableStateOf(false)
 
     init { loadData() }
 
@@ -44,6 +52,39 @@ class MenuViewModel : ViewModel() {
     val filteredProducts: List<Product> get() = if (selectedCategory == null) products else products.filter { it.category_id == selectedCategory }
 
     fun getProductById(id: Int): Product? = products.find { it.id == id }
+
+    fun loadRecommendations(isAuthenticated: Boolean) {
+        viewModelScope.launch {
+            if (!isAuthenticated) {
+                ordersCount = 0
+                recommendation = RecommendationResponse(message = "", suggestions = emptyList())
+                isRecommendationsLoading = false
+                return@launch
+            }
+
+            isRecommendationsLoading = true
+            try {
+                val orders = repository.getUserOrders()
+                ordersCount = orders.size
+                recommendation = if (ordersCount >= 3) {
+                    repository.getRecommendations()
+                } else {
+                    RecommendationResponse(
+                        message = "Мы уже запоминаем ваши предпочтения. После нескольких заказов здесь появятся персональные рекомендации для вас.",
+                        suggestions = emptyList()
+                    )
+                }
+                error = null
+            } catch (e: Exception) {
+                recommendation = RecommendationResponse(
+                    message = "Сейчас не удалось загрузить персональные рекомендации, но этот блок останется доступен.",
+                    suggestions = emptyList()
+                )
+            } finally {
+                isRecommendationsLoading = false
+            }
+        }
+    }
 }
 
 class CartViewModel : ViewModel() {
@@ -271,7 +312,6 @@ class AgentSupportViewModel : ViewModel() {
     private val repository = PizzaRepository()
 
     var notifications by mutableStateOf<List<AppNotification>>(emptyList())
-    var recommendation by mutableStateOf<RecommendationResponse?>(null)
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
 
@@ -280,7 +320,6 @@ class AgentSupportViewModel : ViewModel() {
             isLoading = true
             try {
                 notifications = repository.getNotifications(unreadOnly = false).take(5)
-                recommendation = repository.getRecommendations()
                 error = null
             } catch (e: Exception) {
                 error = e.message

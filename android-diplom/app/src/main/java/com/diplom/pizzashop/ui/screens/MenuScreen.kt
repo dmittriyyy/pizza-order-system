@@ -22,107 +22,183 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.diplom.pizzashop.data.model.Product
 import com.diplom.pizzashop.ui.theme.*
+import com.diplom.pizzashop.ui.viewmodels.AuthViewModel
 import com.diplom.pizzashop.ui.viewmodels.MenuViewModel
 import com.diplom.pizzashop.ui.viewmodels.CartViewModel
 
 @Composable
 fun MenuScreen(
+    authViewModel: AuthViewModel,
     menuViewModel: MenuViewModel = viewModel(),
     cartViewModel: CartViewModel = viewModel(),
-    onProductClick: (Product) -> Unit
+    onProductClick: (Product) -> Unit,
+    onOpenAI: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var addedProductId by remember { mutableStateOf<Int?>(null) }
 
+    LaunchedEffect(authViewModel.isAuthenticated) {
+        menuViewModel.loadRecommendations(authViewModel.isAuthenticated)
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = DarkBackground
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Header
-            Text(
-                text = "🍕 Наше меню",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextWhite,
-                modifier = Modifier.padding(20.dp, 20.dp, 20.dp, 10.dp)
-            )
-
-            // Categories
-            if (menuViewModel.categories.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        FilterChip(
-                            selected = menuViewModel.selectedCategory == null,
-                            onClick = { menuViewModel.selectCategory(null) },
-                            label = { Text("Все") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = OrangeAccent,
-                                containerColor = GlassSurface
-                            )
-                        )
-                    }
-                    items(menuViewModel.categories) { cat ->
-                        FilterChip(
-                            selected = menuViewModel.selectedCategory == cat.id,
-                            onClick = { menuViewModel.selectCategory(cat.id) },
-                            label = { Text(cat.name) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = OrangeAccent,
-                                containerColor = GlassSurface
-                            )
-                        )
+        if (menuViewModel.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = OrangeAccent)
+            }
+        } else if (menuViewModel.error != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(menuViewModel.error!!, color = Color.Red)
+                    Button(onClick = { menuViewModel.loadData() }, colors = ButtonDefaults.buttonColors(OrangeAccent)) {
+                        Text("Повторить")
                     }
                 }
             }
-
-            // Products Grid
-            if (menuViewModel.isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = OrangeAccent)
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "🍕 Наше меню",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = TextWhite,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp)
+                    )
                 }
-            } else if (menuViewModel.error != null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(menuViewModel.error!!, color = Color.Red)
-                        Button(onClick = { menuViewModel.loadData() }, colors = ButtonDefaults.buttonColors(OrangeAccent)) {
-                            Text("Повторить")
+
+                if (menuViewModel.categories.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = menuViewModel.selectedCategory == null,
+                                    onClick = { menuViewModel.selectCategory(null) },
+                                    label = { Text("Все") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = OrangeAccent,
+                                        containerColor = GlassSurface
+                                    )
+                                )
+                            }
+                            items(menuViewModel.categories) { cat ->
+                                FilterChip(
+                                    selected = menuViewModel.selectedCategory == cat.id,
+                                    onClick = { menuViewModel.selectCategory(cat.id) },
+                                    label = { Text(cat.name) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = OrangeAccent,
+                                        containerColor = GlassSurface
+                                    )
+                                )
+                            }
                         }
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(menuViewModel.filteredProducts) { product ->
-                        ProductCard(
-                            product = product,
-                            onClick = { onProductClick(product) },
-                            onAddToCart = { 
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                cartViewModel.addToCart(product.id)
-                                addedProductId = product.id
-                                // Show snackbar
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("✅ ${product.name} добавлен в корзину!")
-                                    addedProductId = null
-                                }
-                            }
+
+                if (authViewModel.isAuthenticated && menuViewModel.ordersCount > 3) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        MenuRecommendationsSection(
+                            onOpenAI = onOpenAI,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
                         )
                     }
+                }
+
+                items(menuViewModel.filteredProducts) { product ->
+                    ProductCard(
+                        product = product,
+                        onClick = { onProductClick(product) },
+                        onAddToCart = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            cartViewModel.addToCart(product.id)
+                            addedProductId = product.id
+                            scope.launch {
+                                snackbarHostState.showSnackbar("✅ ${product.name} добавлен в корзину!")
+                                addedProductId = null
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuRecommendationsSection(
+    onOpenAI: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.Start,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "AI Рекомендации",
+                    color = OrangeAccent,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "Здравствуйте! Мы рады видеть вас снова",
+                    color = TextWhite,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    text = "Персонально для вас",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+                Button(
+                    onClick = onOpenAI,
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.widthIn(min = 160.dp)
+                ) {
+                    Text("Смотреть")
                 }
             }
         }

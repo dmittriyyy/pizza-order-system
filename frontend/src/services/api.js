@@ -1,10 +1,11 @@
 import axios from 'axios'
 
-// Всегда используем относительный путь, чтобы работал Vite Proxy.
-// Это работает и на ПК (localhost:5173 -> localhost:8000),
-// и на телефоне (192.168.x.x:5173 -> 192.168.x.x:8000).
+const apiBaseURL = import.meta.env.VITE_API_BASE_URL || ''
+
+// Локально можно оставить пустую строку и использовать Vite Proxy.
+// Для деплоя Mini App укажи VITE_API_BASE_URL=https://<your-backend>.
 const apiClient = axios.create({
-  baseURL: '', 
+  baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 })

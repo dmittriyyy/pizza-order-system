@@ -77,6 +77,22 @@
     /* Desktop */
     @apply md:bg-dark-800/50 md:backdrop-blur-none md:border-dark-600 md:rounded-2xl md:px-4 md:py-3 md:text-sm;
   }
+
+  .auth-shell {
+    background:
+      radial-gradient(circle at top center, rgba(234, 103, 10, 0.20), transparent 36%),
+      radial-gradient(circle at bottom left, rgba(204, 26, 26, 0.18), transparent 32%);
+  }
+
+  .auth-panel {
+    @apply relative;
+  }
+
+  .auth-logo {
+    @apply w-20 h-20 rounded-[28px] flex items-center justify-center shadow-lg;
+    background: linear-gradient(135deg, rgba(234, 103, 10, 0.95), rgba(204, 26, 26, 0.92));
+    box-shadow: 0 22px 44px rgba(234, 103, 10, 0.22);
+  }
 }
 
 @layer utilities {
