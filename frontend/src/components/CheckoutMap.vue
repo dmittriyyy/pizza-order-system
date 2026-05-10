@@ -182,11 +182,35 @@ const getReverseGeocode = async (coords) => {
       emit('address-selected', value)
       emit('update:address', address)
     } else {
-      selectedAddress.value = ''
+      const fallbackAddress = firstGeoObject?.properties?.get('name') || 'Адрес на карте'
+      selectedAddress.value = fallbackAddress
+      emit('update:modelValue', {
+        lat: coords[0],
+        lng: coords[1],
+        address: fallbackAddress,
+      })
+      emit('address-selected', {
+        lat: coords[0],
+        lng: coords[1],
+        address: fallbackAddress,
+      })
+      emit('update:address', fallbackAddress)
     }
   } catch (error) {
     console.error('Ошибка геокодинга:', error)
-    selectedAddress.value = ''
+    const fallbackAddress = 'Адрес выбран на карте'
+    selectedAddress.value = fallbackAddress
+    emit('update:modelValue', {
+      lat: coords[0],
+      lng: coords[1],
+      address: fallbackAddress,
+    })
+    emit('address-selected', {
+      lat: coords[0],
+      lng: coords[1],
+      address: fallbackAddress,
+    })
+    emit('update:address', fallbackAddress)
   }
 }
 

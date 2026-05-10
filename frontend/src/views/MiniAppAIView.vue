@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen px-4 pt-6 pb-36">
+  <div class="min-h-screen px-4 pt-6 pb-40">
     <div class="max-w-4xl mx-auto">
-      <div class="premium-card overflow-hidden flex flex-col h-[calc(100vh-10rem)] min-h-[560px]">
+      <div class="premium-card overflow-hidden flex flex-col mini-ai-shell">
         <div class="bg-gradient-to-r from-primary-500 to-primary-600 p-5">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -40,8 +40,8 @@
           </div>
         </div>
 
-        <div class="p-4 border-t border-white/10 bg-dark-900/95">
-          <form @submit.prevent="sendMessage" class="flex items-center gap-3">
+        <div class="mini-ai-composer p-4 border-t border-white/10 bg-dark-900/95">
+          <form @submit.prevent="sendMessage" class="flex items-center gap-3 mini-ai-form">
             <input
               v-model="newMessage"
               type="text"
@@ -110,3 +110,25 @@ const sendMessage = async () => {
   }
 }
 </script>
+
+<style scoped>
+.mini-ai-shell {
+  height: calc(100vh - 13rem);
+  min-height: 520px;
+}
+
+.mini-ai-composer {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+.mini-ai-form {
+  align-items: stretch;
+}
+
+@media (max-width: 768px) {
+  .mini-ai-shell {
+    height: calc(100vh - 15rem);
+    min-height: 480px;
+  }
+}
+</style>

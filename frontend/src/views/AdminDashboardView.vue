@@ -1,23 +1,26 @@
 <template>
-  <div class="min-h-screen py-12 px-4">
+  <div class="min-h-screen px-4 py-6 md:py-12">
     <div class="max-w-7xl mx-auto">
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <h1 class="text-4xl font-bold text-white mb-2">⚙️ Админ панель</h1>
-          <p class="text-dark-400">Полная статистика и управление</p>
+      <div :class="isMiniApp ? 'mb-6' : 'mb-8 flex items-center justify-between'">
+        <div :class="isMiniApp ? 'mini-admin-hero' : ''">
+          <div v-if="isMiniApp" class="mini-admin-kicker">Панель управления</div>
+          <h1 :class="isMiniApp ? 'text-3xl font-black text-white leading-tight mb-2' : 'text-4xl font-bold text-white mb-2'">⚙️ Админ панель</h1>
+          <p :class="isMiniApp ? 'text-dark-300 text-sm max-w-xs' : 'text-dark-400'">Полная статистика и управление</p>
         </div>
-        <div class="flex items-center space-x-3">
-          <router-link to="/admin/products" class="btn-secondary px-6 py-3">
-            ✏️ Изменить меню
+        <div :class="isMiniApp ? 'mini-admin-actions' : 'flex items-center space-x-3'">
+          <router-link to="/admin/products" :class="isMiniApp ? 'mini-admin-action-card' : 'btn-secondary px-6 py-3'">
+            <span class="mini-admin-action-icon">✏️</span>
+            <span>Изменить меню</span>
           </router-link>
-          <router-link to="/admin/employees" class="btn-secondary px-6 py-3">
-            👥 Сотрудники
+          <router-link to="/admin/employees" :class="isMiniApp ? 'mini-admin-action-card' : 'btn-secondary px-6 py-3'">
+            <span class="mini-admin-action-icon">👥</span>
+            <span>Сотрудники</span>
           </router-link>
         </div>
       </div>
 
       <!-- Финансовая статистика -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div :class="isMiniApp ? 'grid grid-cols-1 gap-4 mb-6' : 'grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'">
         <div class="premium-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-dark-400 text-sm font-medium">Прибыль за сегодня</h3>
@@ -47,7 +50,7 @@
       </div>
 
       <!-- Статистика по заказам -->
-      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div :class="isMiniApp ? 'grid grid-cols-2 gap-3 mb-6' : 'grid grid-cols-2 md:grid-cols-5 gap-4 mb-8'">
         <div class="premium-card p-4 text-center">
           <div class="text-2xl font-bold text-blue-400">{{ stats.newOrders }}</div>
           <div class="text-dark-400 text-xs mt-1">Новые</div>
@@ -71,8 +74,8 @@
       </div>
 
       <!-- Актуальные заказы -->
-      <div class="premium-card p-6 mb-8">
-        <h2 class="text-2xl font-bold text-white mb-6">🔔 Актуальные заказы</h2>
+      <div :class="isMiniApp ? 'premium-card p-5 mb-6' : 'premium-card p-6 mb-8'">
+        <h2 :class="isMiniApp ? 'text-xl font-bold text-white mb-5' : 'text-2xl font-bold text-white mb-6'">🔔 Актуальные заказы</h2>
 
         <div v-if="activeOrders.length === 0" class="text-center py-8">
           <p class="text-dark-400">Нет активных заказов</p>
@@ -84,8 +87,8 @@
             :key="order.id"
             class="glass p-4 rounded-2xl"
           >
-            <div class="flex items-center justify-between mb-3">
-              <div class="flex items-center space-x-3">
+            <div :class="isMiniApp ? 'space-y-3 mb-3' : 'flex items-center justify-between mb-3'">
+              <div :class="isMiniApp ? 'flex flex-wrap items-center gap-2' : 'flex items-center space-x-3'">
                 <span class="text-white font-bold">Заказ #{{ order.id }}</span>
                 <span :class="[
                   'px-3 py-1 rounded-full text-xs font-medium',
@@ -94,7 +97,7 @@
                   {{ translateStatus(order.status) }}
                 </span>
               </div>
-              <div class="flex items-center space-x-4">
+              <div :class="isMiniApp ? 'flex items-center justify-between' : 'flex items-center space-x-4'">
                 <span class="text-primary-400 font-bold">{{ Math.round(order.total_price) }} ₽</span>
                 <span class="text-dark-400 text-sm">{{ formatTime(order.created_at) }}</span>
               </div>
@@ -112,11 +115,34 @@
       </div>
 
       <!-- Выполненные заказы (последние 10) -->
-      <div class="premium-card p-6">
-        <h2 class="text-2xl font-bold text-white mb-6">✅ Выполненные заказы</h2>
+      <div :class="isMiniApp ? 'premium-card p-5' : 'premium-card p-6'">
+        <h2 :class="isMiniApp ? 'text-xl font-bold text-white mb-5' : 'text-2xl font-bold text-white mb-6'">✅ Выполненные заказы</h2>
 
         <div v-if="completedOrders.length === 0" class="text-center py-8">
           <p class="text-dark-400">Нет выполненных заказов</p>
+        </div>
+
+        <div v-else-if="isMiniApp" class="space-y-3">
+          <div
+            v-for="order in completedOrders"
+            :key="order.id"
+            class="glass p-4 rounded-2xl"
+          >
+            <div class="flex items-center justify-between gap-3 mb-2">
+              <span class="text-white font-bold">#{{ order.id }}</span>
+              <span class="text-primary-400 font-bold">{{ Math.round(order.total_price) }} ₽</span>
+            </div>
+            <div class="text-dark-300 text-sm mb-2">{{ order.delivery_address }}</div>
+            <div class="flex items-center justify-between gap-3">
+              <span :class="[
+                'px-3 py-1 rounded-full text-xs font-medium',
+                getStatusClass(order.status)
+              ]">
+                {{ translateStatus(order.status) }}
+              </span>
+              <span class="text-dark-500 text-xs">{{ formatDateTime(order.created_at) }}</span>
+            </div>
+          </div>
         </div>
 
         <div v-else class="overflow-x-auto">
@@ -154,8 +180,8 @@
         </div>
       </div>
 
-      <div class="premium-card p-6 mt-8">
-        <h2 class="text-2xl font-bold text-white mb-6">⚠️ Проблемные отзывы</h2>
+      <div :class="isMiniApp ? 'premium-card p-5 mt-6' : 'premium-card p-6 mt-8'">
+        <h2 :class="isMiniApp ? 'text-xl font-bold text-white mb-5' : 'text-2xl font-bold text-white mb-6'">⚠️ Проблемные отзывы</h2>
 
         <div v-if="problematicFeedback.length === 0" class="text-center py-8">
           <p class="text-dark-400">Пока нет отзывов, требующих внимания администратора</p>
@@ -193,9 +219,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import { isTelegramMiniApp as detectTelegramMiniApp } from '@/services/telegram'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const isMiniApp = computed(() => detectTelegramMiniApp())
 
 const stats = ref({
   todayRevenue: 0,
@@ -368,3 +396,53 @@ onMounted(() => {
   }, 30000)
 })
 </script>
+
+<style scoped>
+.mini-admin-hero {
+  padding: 22px;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(234, 103, 10, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 16px;
+}
+
+.mini-admin-kicker {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(234, 103, 10, 0.14);
+  color: #fdba74;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mini-admin-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mini-admin-action-card {
+  min-height: 108px;
+  padding: 18px 16px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mini-admin-action-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+</style>
