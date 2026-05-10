@@ -578,6 +578,31 @@ class TelegramPizzaService:
         finally:
             db.close()
 
+    def get_recent_orders_text(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None, limit: int = 5) -> str:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            orders = (
+                db.query(Order)
+                .filter(Order.user_id == user_id)
+                .order_by(Order.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+            if not orders:
+                return "У тебя пока нет заказов."
+
+            lines = ["Последние заказы:"]
+            for order in orders:
+                lines.append(
+                    f"• Заказ #{order.id} — {order.status.value} — {order.total_price:.0f} ₽"
+                )
+            lines.append("")
+            lines.append("Для подробностей по последнему заказу используй /status.")
+            return "\n".join(lines)
+        finally:
+            db.close()
+
     def get_recommendations_text(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> str:
         db = SessionLocal()
         try:
