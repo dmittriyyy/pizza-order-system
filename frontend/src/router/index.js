@@ -7,6 +7,8 @@ import RegisterView from '@/views/RegisterView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import AboutView from '@/views/AboutView.vue'
 import ReviewsView from '@/views/ReviewsView.vue'
+import MiniAppAIView from '@/views/MiniAppAIView.vue'
+import MiniAppMoreView from '@/views/MiniAppMoreView.vue'
 
 // Role-based views
 import CookOrdersView from '@/views/CookOrdersView.vue'
@@ -67,6 +69,22 @@ const router = createRouter({
       component: ReviewsView,
       meta: {
         title: 'Отзывы — Piazza Pizza',
+      },
+    },
+    {
+      path: '/mini-ai',
+      name: 'mini-ai',
+      component: MiniAppAIView,
+      meta: {
+        title: 'WOKI — Piazza Pizza',
+      },
+    },
+    {
+      path: '/more',
+      name: 'more',
+      component: MiniAppMoreView,
+      meta: {
+        title: 'Ещё — Piazza Pizza',
       },
     },
     

@@ -6,20 +6,20 @@
         <span class="mini-dock-label">Меню</span>
       </button>
 
-      <button type="button" class="mini-dock-item mini-dock-item--cart" @click="openCart">
+      <button type="button" class="mini-dock-item" :class="{ 'mini-dock-item--active': isRouteActive('/mini-ai') }" @click="goToAI">
+        <span class="mini-dock-icon">🤖</span>
+        <span class="mini-dock-label">AI</span>
+      </button>
+
+      <button type="button" class="mini-dock-item mini-dock-item--cart" :class="{ 'mini-dock-item--active': cartStore.isOpen }" @click="openCart">
         <span class="mini-dock-icon">🛒</span>
         <span class="mini-dock-label">Корзина</span>
         <span v-if="cartStore.itemsCount > 0" class="mini-dock-badge">{{ cartStore.itemsCount }}</span>
       </button>
 
-      <button type="button" class="mini-dock-item" @click="goToAbout">
-        <span class="mini-dock-icon">ℹ️</span>
-        <span class="mini-dock-label">О нас</span>
-      </button>
-
-      <button type="button" class="mini-dock-item" @click="goToProfile">
-        <span class="mini-dock-icon">{{ authStore.isAuthenticated ? '👤' : '🔐' }}</span>
-        <span class="mini-dock-label">{{ authStore.isAuthenticated ? 'Профиль' : 'Войти' }}</span>
+      <button type="button" class="mini-dock-item" :class="{ 'mini-dock-item--active': isRouteActive('/more') || isRouteActive('/profile') || isRouteActive('/login') || isRouteActive('/register') }" @click="goToMore">
+        <span class="mini-dock-icon">{{ authStore.isAuthenticated ? '👤' : '☰' }}</span>
+        <span class="mini-dock-label">Ещё</span>
       </button>
     </div>
   </nav>
@@ -33,6 +33,7 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const isRouteActive = (path) => router.currentRoute.value.path === path
 
 const goToMenu = async () => {
   if (router.currentRoute.value.path !== '/') {
@@ -44,6 +45,10 @@ const goToMenu = async () => {
   })
 }
 
+const goToAI = async () => {
+  await router.push('/mini-ai')
+}
+
 const openCart = async () => {
   if (!authStore.isAuthenticated) {
     await router.push('/login')
@@ -53,12 +58,8 @@ const openCart = async () => {
   cartStore.openCart()
 }
 
-const goToAbout = async () => {
-  await router.push('/about')
-}
-
-const goToProfile = async () => {
-  await router.push(authStore.isAuthenticated ? '/profile' : '/login')
+const goToMore = async () => {
+  await router.push('/more')
 }
 </script>
 
@@ -106,6 +107,11 @@ const goToProfile = async () => {
 .mini-dock-item--cart {
   background: linear-gradient(135deg, rgba(234, 103, 10, 0.22), rgba(204, 26, 26, 0.12));
   border-color: rgba(234, 103, 10, 0.24);
+}
+
+.mini-dock-item--active {
+  border-color: rgba(234, 103, 10, 0.28);
+  background: linear-gradient(135deg, rgba(234, 103, 10, 0.16), rgba(204, 26, 26, 0.08));
 }
 
 .mini-dock-icon {

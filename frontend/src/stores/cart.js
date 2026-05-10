@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { cartService } from '@/services'
+import { useAuthStore } from '@/stores/auth'
+import { canUseTelegramAuth, getTelegramWebApp } from '@/services/telegram'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({
@@ -19,6 +21,40 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
+    _applyCartData(data) {
+      this.items = data.items || []
+      this.total = data.total || 0
+      this.itemsCount = data.items_count || 0
+    },
+
+    async _tryRecoverAuth() {
+      const authStore = useAuthStore()
+
+      if (canUseTelegramAuth()) {
+        const initData = getTelegramWebApp()?.initData
+        if (initData) {
+          try {
+            await authStore.telegramLogin(initData)
+            return true
+          } catch (error) {
+            console.error('❌ Не удалось восстановить сессию через Telegram:', error)
+          }
+        }
+      }
+
+      if (authStore.token) {
+        try {
+          await authStore.fetchCurrentUser()
+          return true
+        } catch (error) {
+          console.error('❌ Не удалось восстановить токен через /me:', error)
+        }
+      }
+
+      authStore.logout()
+      return false
+    },
+
     async fetchCart() {
       // Если нет токена, просто показываем пустую корзину
       if (!localStorage.getItem('access_token')) {
@@ -32,9 +68,7 @@ export const useCartStore = defineStore('cart', {
       this.error = null
       try {
         const data = await cartService.get()
-        this.items = data.items || []
-        this.total = data.total || 0
-        this.itemsCount = data.items_count || 0
+        this._applyCartData(data)
       } catch (error) {
         // Игнорируем 401 - просто показываем пустую корзину
         this.items = []
@@ -50,21 +84,25 @@ export const useCartStore = defineStore('cart', {
       this.error = null
       try {
         const data = await cartService.add(productId, quantity)
-        this.items = data.items || []
-        this.total = data.total || 0
-        this.itemsCount = data.items_count || 0
+        this._applyCartData(data)
         return data
       } catch (error) {
+        if (error.response?.status === 401) {
+          const recovered = await this._tryRecoverAuth()
+          if (recovered) {
+            const retryData = await cartService.add(productId, quantity)
+            this._applyCartData(retryData)
+            return retryData
+          }
+
+          this.error = 'Сессия неактивна. Войдите снова.'
+          alert('Сессия неактивна. Откройте Войти или Профиль в нижнем меню.')
+          throw error
+        }
+
         const errorMsg = error.response?.data?.detail || 'Ошибка при добавлении в корзину'
         this.error = errorMsg
-        
-        // Если 401 - предлагаем войти
-        if (error.response?.status === 401) {
-          alert('Для добавления в корзину необходимо войти. Пожалуйста, войдите в аккаунт.')
-        } else {
-          alert(errorMsg)
-        }
-        
+        alert(errorMsg)
         throw error
       } finally {
         this.isLoading = false
