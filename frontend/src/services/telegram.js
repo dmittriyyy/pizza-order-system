@@ -2,8 +2,12 @@ export function getTelegramWebApp() {
   return window.Telegram?.WebApp || null
 }
 
+export function hasTelegramWebApp() {
+  return Boolean(getTelegramWebApp())
+}
+
 export function isTelegramMiniApp() {
-  return Boolean(getTelegramWebApp()?.initData)
+  return hasTelegramWebApp()
 }
 
 export function canUseTelegramAuth() {

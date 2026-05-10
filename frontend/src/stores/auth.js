@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { authService } from '@/services'
+import api from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -10,7 +11,7 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.token && !!state.user,
     getUser: (state) => state.user,
     getToken: (state) => state.token,
     getUserRole: (state) => state.user?.role || 'client',
@@ -46,25 +47,19 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchCurrentUser() {
       try {
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${this.token}`
-          }
-        })
-        if (response.ok) {
-          const user = await response.json()
+        const response = await api.get('/api/auth/me')
+        if (response.data) {
+          const user = response.data
           console.log('✅ Данные пользователя с сервера:', user)
           this.user = user
           authService.setCurrentUser(user)
           return user
-        } else {
-          console.warn('⚠️ Не удалось получить данные пользователя')
         }
       } catch (e) {
         console.error('❌ Ошибка при получении профиля:', e)
       }
-      // Fallback: используем логин из формы
-      return { login: 'guest', role: 'client' }
+      this.logout()
+      throw new Error('AUTH_INVALID')
     },
 
     async telegramLogin(initData) {
@@ -73,7 +68,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         const data = await authService.telegramLogin(initData)
         this.token = data.access_token
-        this.user = data.user
+        this.setUser(data.user)
         return data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Ошибка входа через Telegram'
