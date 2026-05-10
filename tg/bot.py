@@ -36,6 +36,19 @@ class AuthState:
 auth_states: dict[int, AuthState] = {}
 
 
+def _is_checkout_intent(text: str) -> bool:
+    normalized = text.lower()
+    triggers = (
+        "оплат",
+        "оформ",
+        "закаж",
+        "хочу заказать",
+        "перейти к оплате",
+        "оплачу",
+    )
+    return any(trigger in normalized for trigger in triggers)
+
+
 @dp.message(CommandStart())
 async def start_handler(message: Message) -> None:
     linked_suffix = (
@@ -101,7 +114,6 @@ async def register_handler(message: Message) -> None:
 async def menu_handler(message: Message) -> None:
     await message.answer(
         service.render_menu_preview(limit=settings.tg_menu_preview_limit),
-        reply_markup=start_keyboard(),
     )
 
 
@@ -287,8 +299,7 @@ async def status_handler(message: Message) -> None:
             username=message.from_user.username,
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name,
-        ),
-        reply_markup=start_keyboard(),
+        )
     )
 
 
@@ -303,8 +314,7 @@ async def recommend_handler(message: Message) -> None:
             username=message.from_user.username,
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name,
-        ),
-        reply_markup=start_keyboard(),
+        )
     )
 
 
@@ -418,6 +428,33 @@ async def chat_handler(message: Message) -> None:
         await message.answer(service.require_link_message())
         return
 
+    if _is_checkout_intent(message.text):
+        checkout = service.get_checkout_context(
+            message.from_user.id,
+            username=message.from_user.username,
+            first_name=message.from_user.first_name,
+            last_name=message.from_user.last_name,
+        )
+        if not checkout:
+            await message.answer("Корзина пуста. Сначала добавь товары.")
+            return
+
+        if checkout.default_address:
+            auth_states[message.from_user.id] = AuthState(
+                mode="checkout",
+                step="awaiting_payment",
+                address=checkout.default_address,
+            )
+            await message.answer(
+                f"Готово, переходим к оформлению.\nАдрес: {checkout.default_address}\nСумма: {checkout.total:.0f} ₽",
+                reply_markup=checkout_keyboard(checkout.total),
+            )
+            return
+
+        auth_states[message.from_user.id] = AuthState(mode="checkout", step="awaiting_address")
+        await message.answer("Напиши адрес доставки одним сообщением, и я сразу покажу кнопку оплаты.")
+        return
+
     response = service.chat(
         message.from_user.id,
         message.text,
@@ -425,7 +462,7 @@ async def chat_handler(message: Message) -> None:
         first_name=message.from_user.first_name,
         last_name=message.from_user.last_name,
     )
-    await message.answer(response, reply_markup=start_keyboard())
+    await message.answer(response)
 
 
 async def main() -> None:
