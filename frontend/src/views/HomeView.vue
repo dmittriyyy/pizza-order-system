@@ -1,26 +1,5 @@
 <template>
   <div class="min-h-screen">
-    <section v-if="isTelegramMiniApp && !authStore.isAuthenticated" class="px-4 pt-4">
-      <div class="max-w-7xl mx-auto">
-        <div class="glass rounded-[28px] p-4 md:p-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p class="text-white font-semibold text-base md:text-lg">Войдите, чтобы заказывать в Mini App</p>
-            <p class="text-dark-300 text-sm md:text-base mt-1">
-              После входа станут доступны корзина, оформление заказа и история.
-            </p>
-          </div>
-          <div class="flex flex-col sm:flex-row gap-3">
-            <router-link to="/login" class="btn-primary px-6 py-3 text-center">
-              Войти
-            </router-link>
-            <router-link to="/register" class="btn-secondary px-6 py-3 text-center">
-              Регистрация
-            </router-link>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Герой секция -->
     <section class="relative h-[600px] flex items-center justify-center overflow-hidden">
       <!-- Фон -->
@@ -31,6 +10,31 @@
           class="w-full h-full object-cover"
         />
         <div class="absolute inset-0 bg-gradient-to-b from-dark-950/70 via-dark-950/50 to-dark-950"></div>
+      </div>
+
+      <div v-if="isTelegramMiniApp && !authStore.isAuthenticated" class="absolute top-4 left-4 right-4 z-20">
+        <div class="max-w-5xl mx-auto">
+          <div class="glass rounded-[24px] px-4 py-3 md:px-5 md:py-4 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20 shrink-0">
+                <span class="text-xl">🍕</span>
+              </div>
+              <div class="min-w-0">
+                <p class="text-white font-semibold text-sm md:text-base truncate">Piazza Pizza</p>
+                <p class="text-dark-300 text-xs md:text-sm truncate">Войдите, чтобы заказывать в Mini App</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <router-link to="/register" class="mini-auth-link">
+                Регистрация
+              </router-link>
+              <router-link to="/login" class="mini-auth-button">
+                Войти
+              </router-link>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Контент -->
@@ -302,5 +306,33 @@ watch(
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.mini-auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ea670a, #e65a00);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 14px 28px rgba(234, 103, 10, 0.2);
+}
+
+.mini-auth-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 16px;
+  color: #d1d5db;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
 }
 </style>
