@@ -1,7 +1,7 @@
 <template>
   <div id="app" class="min-h-screen bg-dark-950">
     <Navbar v-if="!isTelegramMiniApp" />
-    <main :class="shouldShowMiniDock ? 'pt-0 pb-28' : (isTelegramMiniApp ? 'pt-0 pb-6' : 'pt-20')">
+    <main :class="shouldShowMiniDock ? 'pt-0 pb-36' : (isTelegramMiniApp ? 'pt-0 pb-6' : 'pt-20 pb-28 md:pb-0')">
       <RouterView />
     </main>
     <CartDrawer />

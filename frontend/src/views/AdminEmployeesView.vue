@@ -31,6 +31,42 @@
         </div>
       </div>
 
+      <div class="premium-card p-6 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold text-white mb-2">Назначить существующего пользователя</h2>
+            <p class="text-dark-400 text-sm mb-4">
+              Введите логин, email, `@telegram` или `telegram_id`, чтобы выдать роль без создания нового аккаунта.
+            </p>
+            <label class="block text-dark-300 text-sm font-medium mb-2">Профиль пользователя</label>
+            <input
+              v-model.trim="assignForm.query"
+              type="text"
+              placeholder="Например: dimylllik или @dimylllik"
+              class="input-primary"
+            />
+          </div>
+
+          <div class="w-full lg:w-64">
+            <label class="block text-dark-300 text-sm font-medium mb-2">Роль</label>
+            <select v-model="assignForm.role" class="input-primary">
+              <option value="admin">👨‍💼 Админ</option>
+              <option value="cook">👨‍🍳 Повар</option>
+              <option value="courier">🚚 Курьер</option>
+              <option value="client">👤 Клиент</option>
+            </select>
+          </div>
+
+          <button
+            @click="assignExistingEmployee"
+            :disabled="isAssigning || !assignForm.query"
+            class="btn-primary px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ isAssigning ? 'Назначение...' : 'Выдать роль' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Таблица сотрудников -->
       <div class="premium-card p-6">
         <div class="overflow-x-auto">
@@ -123,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
@@ -135,6 +171,11 @@ const authStore = useAuthStore()
 const employees = ref([])
 const isModalOpen = ref(false)
 const selectedEmployee = ref(null)
+const isAssigning = ref(false)
+const assignForm = reactive({
+  query: '',
+  role: 'admin',
+})
 
 const adminsCount = computed(() => employees.value.filter(e => e.role === 'admin').length)
 const cooksCount = computed(() => employees.value.filter(e => e.role === 'cook').length)
@@ -180,6 +221,32 @@ const updateRole = async (userId, newRole) => {
     console.error('Ошибка при обновлении роли:', error)
     alert('❌ Ошибка при обновлении роли')
     fetchEmployees()
+  }
+}
+
+const assignExistingEmployee = async () => {
+  if (!assignForm.query) return
+
+  isAssigning.value = true
+  try {
+    await api.post('/api/admin/employees/assign-existing', {
+      query: assignForm.query,
+      role: assignForm.role,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${authStore.getToken}`
+      }
+    })
+
+    alert('✅ Роль выдана')
+    assignForm.query = ''
+    assignForm.role = 'admin'
+    fetchEmployees()
+  } catch (error) {
+    console.error('Ошибка при назначении роли:', error)
+    alert('❌ ' + (error.response?.data?.detail || 'Не удалось выдать роль'))
+  } finally {
+    isAssigning.value = false
   }
 }
 

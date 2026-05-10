@@ -108,7 +108,7 @@ class OrderService:
         self.db.refresh(order)
         self.notification_service.notify_order_status(
             order,
-            f"Заказ #{order.id} успешно оплачен в тестовом режиме и передан в обработку.",
+            f"Заказ #{order.id} оплачен и передан в обработку.",
         )
         self.notification_service.notify_admins(
             title="Новый оплаченный заказ",

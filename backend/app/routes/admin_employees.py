@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from ..database import get_db
 from ..models.users import User, UserRole, UserStatus
@@ -7,6 +9,11 @@ from ..schemas.user import UserResponse, UserUpdate
 from ..dependencies import get_current_admin_user
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Management"])
+
+
+class ExistingEmployeeAssignRequest(BaseModel):
+    query: str
+    role: UserRole
 
 
 @router.get("/employees", response_model=List[UserResponse])
@@ -85,3 +92,35 @@ def create_employee(
     db.commit()
     db.refresh(new_employee)
     return new_employee
+
+
+@router.post("/employees/assign-existing", response_model=UserResponse)
+def assign_existing_employee(
+    payload: ExistingEmployeeAssignRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    lookup = payload.query.strip()
+    if not lookup:
+        raise HTTPException(status_code=400, detail="Укажите логин, email или Telegram пользователя")
+
+    normalized = lookup.lstrip("@").lower()
+    telegram_value = f"@{normalized}"
+
+    employee = db.query(User).filter(
+        (func.lower(User.login) == normalized) |
+        (func.lower(func.coalesce(User.email, "")) == normalized) |
+        (func.lower(func.coalesce(User.telegram, "")) == telegram_value) |
+        (func.coalesce(User.telegram_id, "") == lookup)
+    ).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    employee.role = payload.role
+    if employee.status != UserStatus.active:
+        employee.status = UserStatus.active
+
+    db.commit()
+    db.refresh(employee)
+    return employee

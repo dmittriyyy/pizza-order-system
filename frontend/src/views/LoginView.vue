@@ -72,7 +72,7 @@
             class="btn-primary w-full py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="isLoading">Вход...</span>
-            <span v-else>Войти по логину</span>
+            <span v-else>Войти</span>
           </button>
         </form>
 

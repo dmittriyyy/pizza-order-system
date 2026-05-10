@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen px-4 pt-6">
+  <div class="min-h-screen px-4 pt-6 pb-36">
     <div class="max-w-4xl mx-auto">
-      <div class="premium-card overflow-hidden">
+      <div class="premium-card overflow-hidden flex flex-col h-[calc(100vh-10rem)] min-h-[560px]">
         <div class="bg-gradient-to-r from-primary-500 to-primary-600 p-5">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -14,7 +14,7 @@
           </div>
         </div>
 
-        <div ref="messagesContainer" class="p-4 space-y-4 h-[calc(100vh-260px)] overflow-y-auto">
+        <div ref="messagesContainer" class="flex-1 min-h-0 p-4 space-y-4 overflow-y-auto">
           <div
             v-for="(message, index) in messages"
             :key="index"
@@ -40,7 +40,7 @@
           </div>
         </div>
 
-        <div class="p-4 border-t border-white/10">
+        <div class="p-4 border-t border-white/10 bg-dark-900/95">
           <form @submit.prevent="sendMessage" class="flex items-center gap-3">
             <input
               v-model="newMessage"
