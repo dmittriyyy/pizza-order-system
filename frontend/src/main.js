@@ -6,7 +6,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from '@/stores/auth'
-import { canUseTelegramAuth, initTelegramWebApp, isTelegramMiniApp } from '@/services/telegram'
+import { initTelegramWebApp } from '@/services/telegram'
 
 const app = createApp(App)
 
@@ -19,15 +19,9 @@ app.use(router)
 const authStore = useAuthStore()
 authStore.loadUserFromStorage()
 
-const telegramWebApp = initTelegramWebApp()
-if (telegramWebApp && canUseTelegramAuth()) {
-  try {
-    await authStore.telegramLogin(telegramWebApp.initData)
-  } catch (error) {
-    console.error('❌ Ошибка Telegram auth:', error)
-    authStore.logout()
-  }
-} else if (authStore.token) {
+initTelegramWebApp()
+
+if (authStore.token) {
   try {
     await authStore.fetchCurrentUser()
   } catch (error) {
