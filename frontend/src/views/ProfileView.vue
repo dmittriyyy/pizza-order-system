@@ -14,7 +14,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
               </div>
-              <h2 class="text-xl font-bold text-white">{{ userProfile.login || 'Пользователь' }}</h2>
+              <h2 class="text-xl font-bold text-white">{{ displayLogin }}</h2>
               <p class="text-dark-400 text-sm mt-1">{{ userProfile.email || '' }}</p>
               <span class="inline-block mt-3 glass px-3 py-1 rounded-full text-xs text-dark-300">
                 {{ translateRole(userProfile.role) }}
@@ -212,11 +212,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import { feedbackService } from '@/services'
+import { canUseTelegramAuth, getTelegramWebApp } from '@/services/telegram'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -247,6 +248,24 @@ const isSubmittingFeedback = ref(false)
 const feedbackForm = reactive({
   rating: 5,
   comment: '',
+})
+
+const telegramRuntimeUsername = computed(() => {
+  const username = getTelegramWebApp()?.initDataUnsafe?.user?.username
+  return username ? `@${username}` : ''
+})
+
+const displayLogin = computed(() => {
+  if (userProfile.value.telegram) {
+    return userProfile.value.telegram
+  }
+  if (telegramRuntimeUsername.value) {
+    return telegramRuntimeUsername.value
+  }
+  if (userProfile.value.login?.startsWith('tg_') && userProfile.value.first_name) {
+    return userProfile.value.first_name
+  }
+  return userProfile.value.login || 'Пользователь'
 })
 
 const translateRole = (role) => {
@@ -295,13 +314,28 @@ const formatDate = (dateString) => {
   })
 }
 
+const tryRecoverTelegramSession = async () => {
+  if (!canUseTelegramAuth()) {
+    return false
+  }
+
+  const initData = getTelegramWebApp()?.initData
+  if (!initData) {
+    return false
+  }
+
+  try {
+    await authStore.telegramLogin(initData)
+    return true
+  } catch (error) {
+    console.error('Ошибка восстановления Telegram-сессии в профиле:', error)
+    return false
+  }
+}
+
 const fetchProfile = async () => {
   try {
-    const response = await api.get('/api/profile/me', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
+    const response = await api.get('/api/profile/me')
     userProfile.value = response.data
     
     // Заполняем форму текущими данными
@@ -310,17 +344,16 @@ const fetchProfile = async () => {
     formData.default_address = response.data.default_address || ''
   } catch (error) {
     console.error('Ошибка при загрузке профиля:', error)
+    if ((error.response?.status === 401 || error.response?.data?.detail === 'Пользователь не найден') && await tryRecoverTelegramSession()) {
+      return fetchProfile()
+    }
   }
 }
 
 const saveProfile = async () => {
   isSaving.value = true
   try {
-    const response = await api.patch('/api/profile/me', formData, {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
+    const response = await api.patch('/api/profile/me', formData)
     userProfile.value = { ...userProfile.value, ...response.data }
     alert('✅ Профиль обновлён!')
   } catch (error) {
@@ -334,14 +367,13 @@ const saveProfile = async () => {
 const fetchOrders = async () => {
   isLoading.value = true
   try {
-    const response = await api.get('/api/orders', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
+    const response = await api.get('/api/orders')
     orders.value = response.data
   } catch (error) {
     console.error('Ошибка при загрузке заказов:', error)
+    if ((error.response?.status === 401 || error.response?.data?.detail === 'Пользователь не найден') && await tryRecoverTelegramSession()) {
+      return fetchOrders()
+    }
   } finally {
     isLoading.value = false
   }

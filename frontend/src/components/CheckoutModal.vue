@@ -145,6 +145,7 @@ import { orderService } from '@/services'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import CheckoutMap from '@/components/CheckoutMap.vue'
+import { canUseTelegramAuth, getTelegramWebApp } from '@/services/telegram'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -199,13 +200,28 @@ const onAddressUpdate = (address) => {
   formData.value.delivery_address = address
 }
 
+const tryRecoverTelegramSession = async () => {
+  if (!canUseTelegramAuth()) {
+    return false
+  }
+
+  const initData = getTelegramWebApp()?.initData
+  if (!initData) {
+    return false
+  }
+
+  try {
+    await authStore.telegramLogin(initData)
+    return true
+  } catch (error) {
+    console.error('Ошибка при восстановлении Telegram-сессии:', error)
+    return false
+  }
+}
+
 const fetchUserProfile = async () => {
   try {
-    const response = await api.get('/api/profile/me', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
+    const response = await api.get('/api/profile/me')
     userProfile.value = response.data
 
     formData.value.customer_name = response.data.first_name || ''
@@ -234,7 +250,24 @@ const submitOrder = async () => {
     router.push('/')
   } catch (error) {
     console.error('Ошибка при оформлении заказа:', error)
-    alert(error.response?.data?.detail || 'Ошибка при оформлении заказа')
+
+    const detail = error.response?.data?.detail || ''
+    if ((error.response?.status === 401 || detail === 'Пользователь не найден') && await tryRecoverTelegramSession()) {
+      try {
+        await orderService.create(formData.value)
+        await cartStore.clearCart()
+        emit('success')
+        close()
+        router.push('/')
+        return
+      } catch (retryError) {
+        console.error('Ошибка при повторном оформлении заказа:', retryError)
+        alert(retryError.response?.data?.detail || 'Ошибка при оформлении заказа')
+        return
+      }
+    }
+
+    alert(detail || 'Ошибка при оформлении заказа')
   } finally {
     isSubmitting.value = false
   }
