@@ -74,6 +74,17 @@ class OrderRepository:
             .all()
         )
 
+    def get_active_delivery_orders(self, skip: int = 0, limit: int = 100) -> List[Order]:
+        return (
+            self.db.query(Order)
+            .options(joinedload(Order.items).joinedload(OrderItem.product))
+            .filter(Order.status == OrderStatus.delivering)
+            .order_by(Order.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
     def get_orders_for_courier_delivering(self, courier_id: int, skip: int = 0, limit: int = 100) -> List[Order]:
         return (
             self.db.query(Order)

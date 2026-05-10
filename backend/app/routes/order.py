@@ -163,6 +163,19 @@ def get_ready_orders(
     return orders
 
 
+@router.get("/courier/active", response_model=List[OrderResponse], dependencies=[Depends(require_courier)])
+def get_active_delivery_orders(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_courier)
+):
+    service = OrderService(db)
+    orders = service.get_active_delivery_orders(skip, limit)
+
+    return orders
+
+
 @router.patch("/{order_id}/status/delivering", response_model=OrderResponse, dependencies=[Depends(require_courier)])
 def start_delivery_order(
     order_id: int,

@@ -8,13 +8,19 @@ from sqlalchemy.orm import joinedload
 from .bootstrap import BACKEND_DIR 
 
 from app.database import SessionLocal
-from app.models import Cart, CartItem, Order, Product, User
+from app.models import Cart, CartItem, Feedback, Order, Product, User
+from app.models.order import OrderStatus
 from app.repositories.cart_repository import CartRepository
+from app.repositories.order_repository import OrderRepository
 from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
+from app.services.feedback_service import FeedbackService
+from app.services.ollama_service import ollama_service
+from app.services.order_service import OrderService
 from app.services.order_tracking_service import OrderTrackingService
 from app.services.recommendation_service import RecommendationService
 from app.services.telegram_auth_service import TelegramAuthService
+from app.schemas.feedback import FeedbackCreate
 from app.schemas.user import UserCreate
 
 
@@ -24,6 +30,15 @@ class MenuItem:
     name: str
     price: float
     category: str
+
+
+@dataclass
+class CheckoutContext:
+    user_id: int
+    total: float
+    customer_name: str
+    customer_phone: str
+    default_address: str | None
 
 
 class TelegramPizzaService:
@@ -284,7 +299,7 @@ class TelegramPizzaService:
 
             lines.append("")
             lines.append(f"Итого: {total:.0f} ₽")
-            lines.append("Оформление заказа пока делай через Mini App.")
+            lines.append("Оформить заказ можно командой /checkout или через Mini App.")
             return "\n".join(lines)
         finally:
             db.close()
@@ -309,6 +324,236 @@ class TelegramPizzaService:
         finally:
             db.close()
 
+    def has_cart_items(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> bool:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            cart = (
+                db.query(Cart)
+                .options(joinedload(Cart.items))
+                .filter(Cart.user_id == user_id)
+                .first()
+            )
+            return bool(cart and cart.items)
+        finally:
+            db.close()
+
+    def get_checkout_context(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> CheckoutContext | None:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            user = db.query(User).filter(User.id == user_id).first()
+            cart = (
+                db.query(Cart)
+                .options(joinedload(Cart.items).joinedload(CartItem.product))
+                .filter(Cart.user_id == user_id)
+                .first()
+            )
+            if not user or not cart or not cart.items:
+                return None
+
+            total = sum(item.product.price * item.quantity for item in cart.items)
+            customer_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.login
+            customer_phone = user.phone or ""
+            return CheckoutContext(
+                user_id=user_id,
+                total=total,
+                customer_name=customer_name,
+                customer_phone=customer_phone,
+                default_address=user.default_address,
+            )
+        finally:
+            db.close()
+
+    def create_order_from_cart(
+        self,
+        telegram_user_id: int,
+        delivery_address: str,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> str:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            user = db.query(User).filter(User.id == user_id).first()
+            cart = (
+                db.query(Cart)
+                .options(joinedload(Cart.items).joinedload(CartItem.product))
+                .filter(Cart.user_id == user_id)
+                .first()
+            )
+            if not user or not cart or not cart.items:
+                return "Корзина пуста. Сначала добавь товары."
+
+            items = [
+                {
+                    "product_id": item.product_id,
+                    "quantity": item.quantity,
+                    "price": item.product.price,
+                    "comment": item.comment,
+                    "special_requests": None,
+                }
+                for item in cart.items
+            ]
+
+            repo = OrderRepository(db)
+            order_service = OrderService(db)
+            new_order = repo.create_order(
+                user_id=user.id,
+                total_price=sum(item["price"] * item["quantity"] for item in items),
+                delivery_address=delivery_address,
+                delivery_comment=None,
+                delivery_time=None,
+                delivery_lat=None,
+                delivery_lng=None,
+                customer_phone=user.phone or user.login,
+                customer_name=f"{user.first_name or ''} {user.last_name or ''}".strip() or user.login,
+                order_comment="Оформлено через Telegram-бота",
+                payment_method="credit_card",
+                items=items,
+            )
+            new_order = order_service.process_fake_payment(new_order)
+            cart_repo = CartRepository(db)
+            cart_repo.clear_cart(cart)
+            return (
+                f"Заказ #{new_order.id} оплачен и передан в обработку.\n"
+                f"Адрес: {delivery_address}\n"
+                f"Статус: {new_order.status.value}"
+            )
+        except Exception:
+            db.rollback()
+            return "Не удалось оформить заказ. Попробуй ещё раз через пару секунд."
+        finally:
+            db.close()
+
+    def get_latest_completed_order_for_review(
+        self,
+        telegram_user_id: int,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> Order | None:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            reviewed_order_ids = {
+                order_id
+                for (order_id,) in db.query(Feedback.order_id).filter(Feedback.user_id == user_id).all()
+            }
+            return (
+                db.query(Order)
+                .filter(
+                    Order.user_id == user_id,
+                    Order.status == OrderStatus.completed,
+                    ~Order.id.in_(reviewed_order_ids) if reviewed_order_ids else True,
+                )
+                .order_by(Order.created_at.desc())
+                .first()
+            )
+        finally:
+            db.close()
+
+    def create_feedback_for_order(
+        self,
+        telegram_user_id: int,
+        order_id: int,
+        rating: int,
+        comment: str | None,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+    ) -> str:
+        db = SessionLocal()
+        try:
+            user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
+            service = FeedbackService(db)
+            feedback = service.create_feedback(
+                user_id,
+                FeedbackCreate(
+                    order_id=order_id,
+                    rating=rating,
+                    comment=None if not comment or comment == "-" else comment,
+                ),
+            )
+            visibility = "Отзыв опубликован на сайте." if feedback.is_public else "Отзыв сохранён."
+            if feedback.needs_admin_attention:
+                visibility += " Администратор увидит его в отдельной сводке."
+            return f"Спасибо за отзыв к заказу #{order_id}. {visibility}"
+        except ValueError as error:
+            return str(error)
+        finally:
+            db.close()
+
+    def get_admin_feedback_digest(self, telegram_user_id: int, limit: int = 12) -> str:
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.telegram_id == str(telegram_user_id)).first()
+            if not user or getattr(user.role, "value", user.role) != "admin":
+                return "Эта команда доступна только администратору."
+
+            feedback_items = (
+                db.query(Feedback)
+                .options(joinedload(Feedback.user))
+                .order_by(Feedback.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+            if not feedback_items:
+                return "Пока нет отзывов для сводки."
+
+            prepared = []
+            positive = neutral = negative = 0
+            for item in feedback_items:
+                if item.sentiment == "positive":
+                    positive += 1
+                elif item.sentiment == "negative":
+                    negative += 1
+                else:
+                    neutral += 1
+                author = item.user.login if item.user else "Пользователь"
+                prepared.append(
+                    f"Заказ #{item.order_id}; автор={author}; оценка={item.rating}; sentiment={item.sentiment}; комментарий={item.comment or 'без комментария'}"
+                )
+
+            digest_lines = [
+                f"Последние отзывы: {len(feedback_items)}",
+                f"Позитивных: {positive}",
+                f"Нейтральных: {neutral}",
+                f"Негативных: {negative}",
+                "",
+                "Краткая AI-сводка:",
+            ]
+
+            prompt = (
+                "Ты помощник администратора пиццерии. "
+                "По последним отзывам сделай короткую сводку на русском: что клиентам нравится, "
+                "что не нравится, какие 2-3 действия стоит предпринять. Пиши без markdown, компактно.\n\n"
+                + "\n".join(prepared)
+            )
+            try:
+                result = ollama_service.send_message(
+                    messages=[
+                        {"role": "system", "content": "Ты аналитик отзывов для администратора доставки еды. Отвечай по-русски кратко и предметно."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.2,
+                )
+                digest_lines.append((result.get("content") or "").strip() or "Не удалось построить AI-сводку.")
+            except Exception:
+                digest_lines.append("AI-сводка временно недоступна.")
+
+            digest_lines.append("")
+            digest_lines.append("Последние отзывы:")
+            for item in feedback_items[:5]:
+                author = item.user.login if item.user else "Пользователь"
+                digest_lines.append(
+                    f"• Заказ #{item.order_id}, {author}, {item.rating}/5: {item.comment or 'без комментария'}"
+                )
+            return "\n".join(digest_lines)
+        finally:
+            db.close()
+
     def get_latest_order_status(self, telegram_user_id: int, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> str:
         db = SessionLocal()
         try:
@@ -327,7 +572,8 @@ class TelegramPizzaService:
             return (
                 f"Заказ #{tracking['order_id']}\n"
                 f"Статус: {tracking['status']}\n"
-                f"{tracking['message']}"
+                f"{tracking['message']}\n\n"
+                f"Если заказ уже завершён, можешь оставить отзыв командой /review."
             )
         finally:
             db.close()

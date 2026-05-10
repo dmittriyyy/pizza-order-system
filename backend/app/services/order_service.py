@@ -51,6 +51,9 @@ class OrderService:
     def get_courier_orders(self, skip: int = 0, limit: int = 100) -> List[Order]:
         return self.repository.get_orders_for_courier(skip, limit)
 
+    def get_active_delivery_orders(self, skip: int = 0, limit: int = 100) -> List[Order]:
+        return self.repository.get_active_delivery_orders(skip, limit)
+
     def can_transition_status(self, current_status: OrderStatus, new_status: OrderStatus, 
                                user_role: UserRole) -> tuple[bool, str]:
 

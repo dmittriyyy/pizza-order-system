@@ -40,7 +40,7 @@ class FeedbackService:
             rating=payload.rating,
             comment=payload.comment,
             sentiment=sentiment,
-            is_public=sentiment == "positive",
+            is_public=True,
             needs_admin_attention=sentiment == "negative",
         )
         self.db.add(feedback)

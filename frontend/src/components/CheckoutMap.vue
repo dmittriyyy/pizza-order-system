@@ -121,8 +121,6 @@ const loadYandexMaps = () => {
 
 const selectPoint = async (coords) => {
   try {
-    const fallbackAddress = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`
-
     // Удаляем старую метку
     if (placemark) {
       map.geoObjects.remove(placemark)
@@ -145,16 +143,14 @@ const selectPoint = async (coords) => {
     
     map.geoObjects.add(placemark)
 
-    // Сразу обновляем форму, даже если геокодер ответит позже или с ошибкой.
-    selectedAddress.value = fallbackAddress
-    const fallbackValue = {
+    // Сразу сохраняем координаты, но не подставляем их в поле адреса.
+    selectedAddress.value = 'Определяем адрес...'
+    const pendingValue = {
       lat: coords[0],
       lng: coords[1],
-      address: fallbackAddress,
+      address: '',
     }
-    emit('update:modelValue', fallbackValue)
-    emit('address-selected', fallbackValue)
-    emit('update:address', fallbackAddress)
+    emit('update:modelValue', pendingValue)
     
     // Получаем адрес по координатам
     await getReverseGeocode(coords)
@@ -185,9 +181,12 @@ const getReverseGeocode = async (coords) => {
       emit('update:modelValue', value)
       emit('address-selected', value)
       emit('update:address', address)
+    } else {
+      selectedAddress.value = ''
     }
   } catch (error) {
     console.error('Ошибка геокодинга:', error)
+    selectedAddress.value = ''
   }
 }
 

@@ -6,12 +6,12 @@ from dataclasses import dataclass
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
+from aiogram.enums import ParseMode
 
 from .config import settings
-from .keyboards import start_keyboard
+from .keyboards import checkout_keyboard, review_rating_keyboard, start_keyboard
 from .services import TelegramPizzaService
 
 
@@ -28,6 +28,9 @@ class AuthState:
     login: str | None = None
     password: str | None = None
     first_name: str | None = None
+    address: str | None = None
+    order_id: int | None = None
+    rating: int | None = None
 
 
 auth_states: dict[int, AuthState] = {}
@@ -49,9 +52,12 @@ async def start_handler(message: Message) -> None:
         "/unlink - снять текущую привязку\n"
         "/menu - краткое меню\n"
         "/cart - показать корзину\n"
+        "/checkout - оформить заказ из корзины\n"
         "/clear - очистить корзину\n"
         "/status - статус последнего заказа\n"
-        "/recommend - персональные рекомендации"
+        "/recommend - персональные рекомендации\n"
+        "/review - оставить отзыв по завершённому заказу\n"
+        "/reviews_digest - сводка отзывов для админа"
         f"{linked_suffix}"
     )
     await message.answer(text, reply_markup=start_keyboard())
@@ -104,14 +110,24 @@ async def cart_handler(message: Message) -> None:
     if not service.is_linked(message.from_user.id):
         await message.answer(service.require_link_message())
         return
-    await message.answer(
-        service.get_cart_text(
+    cart_text = service.get_cart_text(
+        message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+    )
+    await message.answer(cart_text)
+    checkout = service.get_checkout_context(
             message.from_user.id,
             username=message.from_user.username,
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name,
         )
-    )
+    if checkout:
+        await message.answer(
+            "Можно оформить заказ прямо здесь.",
+            reply_markup=checkout_keyboard(checkout.total),
+        )
 
 
 @dp.message(Command("clear"))
@@ -142,8 +158,122 @@ async def help_handler(message: Message) -> None:
         "/link - привязать аккаунт\n"
         "/unlink - снять привязку\n"
         "/status - где мой заказ\n"
-        "/recommend - что заказать снова"
+        "/recommend - что заказать снова\n"
+        "/checkout - оформить заказ из корзины\n"
+        "/review - отзыв по завершённому заказу"
     )
+
+
+@dp.message(Command("checkout"))
+async def checkout_handler(message: Message) -> None:
+    if not service.is_linked(message.from_user.id):
+        await message.answer(service.require_link_message())
+        return
+
+    checkout = service.get_checkout_context(
+        message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+    )
+    if not checkout:
+        await message.answer("Корзина пуста. Сначала добавь товары.")
+        return
+
+    if checkout.default_address:
+        auth_states[message.from_user.id] = AuthState(
+            mode="checkout",
+            step="awaiting_payment",
+            address=checkout.default_address,
+        )
+        await message.answer(
+            f"Подтверди заказ.\nАдрес: {checkout.default_address}\nСумма: {checkout.total:.0f} ₽",
+            reply_markup=checkout_keyboard(checkout.total),
+        )
+        return
+
+    auth_states[message.from_user.id] = AuthState(mode="checkout", step="awaiting_address")
+    await message.answer("Введи адрес доставки текстом. После этого я покажу кнопку оплаты.")
+
+
+@dp.message(Command("review"))
+async def review_handler(message: Message) -> None:
+    if not service.is_linked(message.from_user.id):
+        await message.answer(service.require_link_message())
+        return
+
+    order = service.get_latest_completed_order_for_review(
+        message.from_user.id,
+        username=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name,
+    )
+    if not order:
+        await message.answer("Нет завершённого заказа без отзыва. Как только доставим заказ, сможешь оставить отзыв.")
+        return
+
+    auth_states[message.from_user.id] = AuthState(
+        mode="review",
+        step="awaiting_rating",
+        order_id=order.id,
+    )
+    await message.answer(
+        f"Оцените заказ #{order.id} по шкале от 1 до 5.",
+        reply_markup=review_rating_keyboard(order.id),
+    )
+
+
+@dp.message(Command("reviews_digest"))
+async def reviews_digest_handler(message: Message) -> None:
+    if not message.from_user:
+        return
+    await message.answer(service.get_admin_feedback_digest(message.from_user.id))
+
+
+@dp.callback_query()
+async def callback_handler(callback: CallbackQuery) -> None:
+    if not callback.from_user:
+        return
+
+    user_id = callback.from_user.id
+    state = auth_states.get(user_id)
+    data = callback.data or ""
+
+    if data == "checkout_pay":
+        if not state or state.mode != "checkout" or not state.address:
+            await callback.answer("Сначала укажи адрес доставки.", show_alert=True)
+            return
+
+        result = service.create_order_from_cart(
+            user_id,
+            delivery_address=state.address,
+            username=callback.from_user.username,
+            first_name=callback.from_user.first_name,
+            last_name=callback.from_user.last_name,
+        )
+        auth_states.pop(user_id, None)
+        await callback.message.answer(result, reply_markup=start_keyboard())
+        await callback.answer("Заказ обработан")
+        return
+
+    if data.startswith("review_rate:"):
+        _, order_id_raw, rating_raw = data.split(":")
+        if not state or state.mode != "review":
+            await callback.answer("Сначала вызови /review", show_alert=True)
+            return
+
+        auth_states[user_id] = AuthState(
+            mode="review",
+            step="awaiting_review_comment",
+            order_id=int(order_id_raw),
+            rating=int(rating_raw),
+        )
+        await callback.message.answer(
+            f"Поставили {rating_raw}/5 для заказа #{order_id_raw}.\n"
+            "Теперь напиши комментарий одним сообщением. Если комментарий не нужен, отправь -"
+        )
+        await callback.answer("Оценка сохранена")
+        return
 
 
 @dp.message(Command("status"))
@@ -231,6 +361,44 @@ async def chat_handler(message: Message) -> None:
                 first_name=None if message.text.strip() == "-" else message.text.strip(),
             )
             await message.answer("Введи фамилию для нового аккаунта. Если не хочешь, отправь -")
+            return
+
+        if state.mode == "checkout" and state.step == "awaiting_address":
+            address = message.text.strip()
+            checkout = service.get_checkout_context(
+                message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            )
+            if not checkout:
+                auth_states.pop(message.from_user.id, None)
+                await message.answer("Корзина уже пуста. Сначала добавь товары.")
+                return
+
+            auth_states[message.from_user.id] = AuthState(
+                mode="checkout",
+                step="awaiting_payment",
+                address=address,
+            )
+            await message.answer(
+                f"Адрес принят: {address}\nСумма к оплате: {checkout.total:.0f} ₽",
+                reply_markup=checkout_keyboard(checkout.total),
+            )
+            return
+
+        if state.mode == "review" and state.step == "awaiting_review_comment":
+            result = service.create_feedback_for_order(
+                message.from_user.id,
+                order_id=state.order_id or 0,
+                rating=state.rating or 5,
+                comment=message.text.strip(),
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+            )
+            auth_states.pop(message.from_user.id, None)
+            await message.answer(result, reply_markup=start_keyboard())
             return
 
         if state.step == "awaiting_last_name":

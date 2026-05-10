@@ -288,25 +288,16 @@ const getRouteUrl = (order) => {
 const fetchOrders = async () => {
   isLoading.value = true
   try {
-    // Готовые заказы
-    const readyResponse = await api.get('/api/orders/courier/ready', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
-    
-    // Заказы в доставке — берем ВСЕ заказы через админский эндпоинт
-    // (обычный /api/orders возвращает только заказы текущего пользователя)
-    const allResponse = await api.get('/api/orders/admin/all', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
-    const deliveringOrders = allResponse.data.filter(o => o.status === 'delivering')
-    
-    console.log('Заказы в доставке:', deliveringOrders)
-    
-    orders.value = [...readyResponse.data, ...deliveringOrders]
+    const headers = {
+      'Authorization': `Bearer ${authStore.getToken}`
+    }
+
+    const [readyResponse, activeResponse] = await Promise.all([
+      api.get('/api/orders/courier/ready', { headers }),
+      api.get('/api/orders/courier/active', { headers }),
+    ])
+
+    orders.value = [...readyResponse.data, ...activeResponse.data]
   } catch (error) {
     console.error('Ошибка при загрузке заказов:', error)
   } finally {
