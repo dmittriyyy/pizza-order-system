@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user, require_admin
 from ..models.users import User
-from ..schemas.feedback import FeedbackCreate, FeedbackResponse
+from ..schemas.feedback import FeedbackCreate, FeedbackResponse, FeedbackSummaryResponse
 from ..services.feedback_service import FeedbackService
 
 
@@ -68,6 +68,16 @@ def list_problematic_feedback(
         }
         for item in feedback
     ]
+
+
+@router.get("/admin/problematic-summary", response_model=FeedbackSummaryResponse, dependencies=[Depends(require_admin)])
+def get_problematic_feedback_summary(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    service = FeedbackService(db)
+    return service.build_negative_feedback_summary(limit=limit)
 
 
 @router.post("", response_model=FeedbackResponse)

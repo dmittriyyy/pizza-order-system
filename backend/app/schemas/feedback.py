@@ -25,3 +25,8 @@ class FeedbackResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class FeedbackSummaryResponse(BaseModel):
+    summary: str
+    negative_count: int

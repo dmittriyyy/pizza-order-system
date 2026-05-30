@@ -183,6 +183,16 @@
       <div :class="isMiniApp ? 'premium-card p-5 mt-6' : 'premium-card p-6 mt-8'">
         <h2 :class="isMiniApp ? 'text-xl font-bold text-white mb-5' : 'text-2xl font-bold text-white mb-6'">⚠️ Проблемные отзывы</h2>
 
+        <div class="glass rounded-2xl border border-yellow-500/20 p-4 mb-5">
+          <div class="flex items-center justify-between gap-3 mb-2">
+            <span class="text-white font-bold">Краткая сводка по негативным отзывам</span>
+            <span class="text-yellow-300 text-xs">Негативных отзывов: {{ problematicFeedbackSummary.negative_count }}</span>
+          </div>
+          <p class="text-dark-300 text-sm leading-relaxed">
+            {{ problematicFeedbackSummary.summary }}
+          </p>
+        </div>
+
         <div v-if="problematicFeedback.length === 0" class="text-center py-8">
           <p class="text-dark-400">Пока нет отзывов, требующих внимания администратора</p>
         </div>
@@ -219,6 +229,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import { feedbackService } from '@/services'
 import { isTelegramMiniApp as detectTelegramMiniApp } from '@/services/telegram'
 
 const router = useRouter()
@@ -241,6 +252,10 @@ const stats = ref({
 const activeOrders = ref([])
 const completedOrders = ref([])
 const problematicFeedback = ref([])
+const problematicFeedbackSummary = ref({
+  summary: 'Загружаем краткую сводку по негативным отзывам...',
+  negative_count: 0,
+})
 
 const getStatusClass = (status) => {
   const classes = {
@@ -371,14 +386,21 @@ const fetchStats = async () => {
 
 const fetchProblematicFeedback = async () => {
   try {
-    const response = await api.get('/api/feedback/admin/problematic', {
-      headers: {
-        'Authorization': `Bearer ${authStore.getToken}`
-      }
-    })
-    problematicFeedback.value = response.data || []
+    problematicFeedback.value = await feedbackService.getProblematic()
   } catch (error) {
     console.error('Ошибка при загрузке проблемных отзывов:', error)
+  }
+}
+
+const fetchProblematicFeedbackSummary = async () => {
+  try {
+    problematicFeedbackSummary.value = await feedbackService.getProblematicSummary({ limit: 20 })
+  } catch (error) {
+    console.error('Ошибка при загрузке сводки по проблемным отзывам:', error)
+    problematicFeedbackSummary.value = {
+      summary: 'Не удалось загрузить AI-сводку по негативным отзывам.',
+      negative_count: problematicFeedback.value.length,
+    }
   }
 }
 
@@ -389,10 +411,12 @@ onMounted(() => {
   }
   fetchStats()
   fetchProblematicFeedback()
+  fetchProblematicFeedbackSummary()
   // Автообновление каждые 30 секунд
   setInterval(() => {
     fetchStats()
     fetchProblematicFeedback()
+    fetchProblematicFeedbackSummary()
   }, 30000)
 })
 </script>

@@ -82,6 +82,62 @@ class FeedbackService:
             .all()
         )
 
+    def build_negative_feedback_summary(self, limit: int = 20) -> dict[str, str | int]:
+        feedback_items = self.list_negative_feedback(limit=limit)
+        if not feedback_items:
+            return {
+                "summary": "Негативных отзывов, требующих внимания, пока нет.",
+                "negative_count": 0,
+            }
+
+        prepared = []
+        for item in feedback_items:
+            prepared.append(
+                f"Заказ #{item.order_id}; оценка={item.rating}; комментарий={item.comment or 'без комментария'}"
+            )
+
+        prompt = (
+            "Ты анализируешь только негативные отзывы клиентов пиццерии.\n"
+            "Сделай короткую сводку для администратора на русском языке.\n"
+            "Нужно ответить в 2-4 предложениях: что именно не так чаще всего, где повторяются проблемы, "
+            "и что стоит проверить в первую очередь.\n"
+            "Не используй markdown, заголовки и списки. Пиши компактно и по делу.\n\n"
+            + "\n".join(prepared)
+        )
+
+        try:
+            result = ollama_service.send_message(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Ты аналитик клиентских отзывов для администратора доставки еды. Отвечай кратко и предметно по-русски.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+            )
+            summary = (result.get("content") or "").strip()
+            if summary:
+                return {
+                    "summary": summary,
+                    "negative_count": len(feedback_items),
+                }
+        except Exception:
+            pass
+
+        with_comments = [item for item in feedback_items if item.comment]
+        low_ratings = sum(1 for item in feedback_items if item.rating <= 2)
+        fallback_summary = (
+            f"Найдено {len(feedback_items)} негативных отзывов."
+            f" Низкие оценки 1-2 поставили {low_ratings} раз."
+            f" Комментарии оставили {len(with_comments)} клиентов."
+            " Стоит в первую очередь проверить качество доставки, соответствие заказа и стабильность сервиса."
+        )
+        return {
+            "summary": fallback_summary,
+            "negative_count": len(feedback_items),
+        }
+
     def _analyze_with_llm(self, rating: int, comment: str) -> str:
         prompt = (
             "Ты анализируешь отзыв клиента пиццерии.\n"

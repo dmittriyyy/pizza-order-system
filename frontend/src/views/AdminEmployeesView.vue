@@ -31,9 +31,12 @@
         </div>
       </div>
 
-      <div class="premium-card p-6 mb-8">
+      <div class="premium-card p-6 mb-8 border border-primary-500/15 shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
         <div class="flex flex-col lg:flex-row lg:items-end gap-4">
           <div class="flex-1">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 text-primary-300 text-xs font-bold uppercase tracking-[0.18em] mb-3">
+              Быстрое назначение
+            </div>
             <h2 class="text-2xl font-bold text-white mb-2">Назначить существующего пользователя</h2>
             <p class="text-dark-400 text-sm mb-4">
               Введите логин, email, `@telegram` или `telegram_id`, чтобы выдать роль без создания нового аккаунта.
@@ -42,14 +45,14 @@
             <input
               v-model.trim="assignForm.query"
               type="text"
-              placeholder="Например: dimylllik или @dimylllik"
+              placeholder="Например: user или @username"
               class="input-primary"
             />
           </div>
 
           <div class="w-full lg:w-64">
             <label class="block text-dark-300 text-sm font-medium mb-2">Роль</label>
-            <select v-model="assignForm.role" class="input-primary">
+            <select v-model="assignForm.role" class="input-primary role-select">
               <option value="admin">👨‍💼 Админ</option>
               <option value="cook">👨‍🍳 Повар</option>
               <option value="courier">🚚 Курьер</option>
@@ -98,13 +101,19 @@
                   </div>
                 </td>
                 <td class="py-3 px-4">
+                  <div class="mb-2">
+                    <span :class="roleBadgeClass(emp.role)" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold">
+                      <span>{{ roleEmoji(emp.role) }}</span>
+                      <span>{{ roleLabel(emp.role) }}</span>
+                    </span>
+                  </div>
                   <select
                     :value="emp.role"
                     @change="updateRole(emp.id, $event.target.value)"
-                    class="glass px-3 py-1.5 rounded-xl text-sm text-white focus:outline-none"
+                    class="glass px-3 py-1.5 rounded-xl text-sm text-white focus:outline-none role-select w-full"
                   >
                     <option value="admin">👨‍💼 Админ</option>
-                    <option value="cook">👨‍ Повар</option>
+                    <option value="cook">👨‍🍳 Повар</option>
                     <option value="courier">🚚 Курьер</option>
                     <option value="client">👤 Клиент</option>
                   </select>
@@ -186,6 +195,36 @@ const getInitials = (emp) => {
   const first = emp.first_name?.charAt(0) || ''
   const last = emp.last_name?.charAt(0) || ''
   return (first + last) || emp.login.charAt(0).toUpperCase()
+}
+
+const roleLabel = (role) => {
+  const labels = {
+    admin: 'Админ',
+    cook: 'Повар',
+    courier: 'Курьер',
+    client: 'Клиент',
+  }
+  return labels[role] || role
+}
+
+const roleEmoji = (role) => {
+  const emojis = {
+    admin: '👨‍💼',
+    cook: '👨‍🍳',
+    courier: '🚚',
+    client: '👤',
+  }
+  return emojis[role] || '👤'
+}
+
+const roleBadgeClass = (role) => {
+  const classes = {
+    admin: 'bg-purple-500/15 text-purple-300 border border-purple-500/20',
+    cook: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
+    courier: 'bg-blue-500/15 text-blue-300 border border-blue-500/20',
+    client: 'bg-white/5 text-dark-200 border border-white/10',
+  }
+  return classes[role] || classes.client
 }
 
 const fetchEmployees = async () => {
@@ -295,3 +334,18 @@ onMounted(() => {
   fetchEmployees()
 })
 </script>
+
+<style scoped>
+.role-select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.6) 50%),
+    linear-gradient(135deg, rgba(255,255,255,0.6) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.5rem;
+}
+</style>

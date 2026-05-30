@@ -108,17 +108,47 @@
 
           <div
             v-if="ordersCount >= 3 && recommendation.suggestions?.length"
-            class="mt-4 flex gap-3 overflow-x-auto pb-1 scrollbar-hide"
+            class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3"
           >
             <article
-              v-for="item in recommendation.suggestions.slice(0, 3)"
+              v-for="item in recommendationCards"
               :key="item.product_id"
-              class="glass rounded-2xl p-4 min-w-[220px] md:min-w-[240px] flex-shrink-0"
+              class="glass rounded-2xl overflow-hidden flex flex-col"
             >
-              <p class="text-white text-sm md:text-base font-bold leading-tight mb-2">{{ item.name }}</p>
-              <p class="text-dark-400 text-xs md:text-sm compact-reason">
-                {{ item.reason }}
-              </p>
+              <div class="relative h-36 overflow-hidden">
+                <img
+                  :src="item.image_url || defaultRecommendationImage"
+                  :alt="item.name"
+                  class="w-full h-full object-cover"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/40 to-transparent"></div>
+                <div class="absolute left-4 right-4 bottom-4 flex items-end justify-between gap-3">
+                  <p class="text-white text-sm md:text-base font-bold leading-tight">{{ item.name }}</p>
+                  <div class="shrink-0 text-right">
+                    <span class="text-lg font-bold text-gradient">{{ Math.round(item.price) }}</span>
+                    <span class="text-dark-300 text-xs ml-1">₽</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-4 flex-1 flex flex-col">
+                <p class="text-primary-400 text-[11px] font-semibold uppercase tracking-[0.16em] mb-2">
+                  Почему рекомендуем
+                </p>
+                <p class="text-dark-300 text-sm compact-reason flex-1">
+                  {{ item.reason }}
+                </p>
+
+                <button
+                  type="button"
+                  class="btn-primary mt-4 w-full px-4 py-3 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="isRecommendationAdding(item.product_id)"
+                  @click="handleAddRecommendation(item.product_id)"
+                >
+                  <span v-if="isRecommendationAdding(item.product_id)">Добавляем...</span>
+                  <span v-else>В корзину</span>
+                </button>
+              </div>
             </article>
           </div>
 
@@ -126,12 +156,6 @@
             <p class="text-dark-300 text-sm leading-relaxed text-center">
               Сделайте ещё пару заказов, и здесь появятся короткие персональные подсказки.
             </p>
-          </div>
-
-          <div class="mt-4 flex justify-center">
-            <a href="#menu" class="btn-primary px-6 py-3 text-sm md:text-base text-center">
-              Смотреть меню
-            </a>
           </div>
         </div>
       </div>
@@ -228,6 +252,24 @@ const recommendation = ref({
 })
 const ordersCount = ref(0)
 const isRecommendationsLoading = ref(false)
+const addingRecommendationIds = ref([])
+const defaultRecommendationImage = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&h=600&fit=crop'
+
+const recommendationCards = computed(() =>
+  (recommendation.value.suggestions || [])
+    .slice(0, 3)
+    .map((item) => {
+      const product = productsStore.getProductById(item.product_id)
+
+      return {
+        ...item,
+        image_url: product?.image_url,
+        price: product?.price ?? 0,
+      }
+    })
+)
+
+const isRecommendationAdding = (productId) => addingRecommendationIds.value.includes(productId)
 
 const loadRecommendations = async () => {
   if (!authStore.isAuthenticated) {
@@ -267,10 +309,18 @@ const loadRecommendations = async () => {
 }
 
 const handleAddRecommendation = async (productId) => {
+  if (isRecommendationAdding(productId)) {
+    return
+  }
+
+  addingRecommendationIds.value = [...addingRecommendationIds.value, productId]
+
   try {
     await cartStore.addToCart(productId, 1)
   } catch (error) {
     console.error('Ошибка при добавлении рекомендации в корзину:', error)
+  } finally {
+    addingRecommendationIds.value = addingRecommendationIds.value.filter((id) => id !== productId)
   }
 }
 

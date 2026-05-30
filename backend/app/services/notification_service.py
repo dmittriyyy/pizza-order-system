@@ -80,6 +80,21 @@ class NotificationService:
             )
             self._send_telegram_to_user(admin, f"{title}\n{message}")
 
+    def notify_support_reply(self, user: Optional[User], ticket_id: int, message: str) -> None:
+        if not user:
+            return
+
+        self.create_in_app(
+            user_id=user.id,
+            title=f"Ответ техподдержки по тикету #{ticket_id}",
+            message=message,
+            kind="support_reply",
+        )
+        self._send_telegram_to_user(
+            user,
+            f"Ответ техподдержки по обращению #{ticket_id}:\n{message}",
+        )
+
     def _send_telegram_to_user(self, user: Optional[User], message: str) -> None:
         if not user or not user.telegram_id or not self.telegram_token:
             return

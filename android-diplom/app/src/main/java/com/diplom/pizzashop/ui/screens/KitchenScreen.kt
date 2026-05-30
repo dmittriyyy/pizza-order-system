@@ -137,7 +137,7 @@ fun OrderCard(order: Order, viewModel: KitchenViewModel) {
             }
 
             // Order comment
-            if (order.order_comment != null) {
+            if (!order.order_comment.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Surface(
                     color = Color.Yellow.copy(alpha = 0.1f),

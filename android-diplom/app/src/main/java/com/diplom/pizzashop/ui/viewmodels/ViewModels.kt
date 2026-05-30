@@ -168,10 +168,34 @@ class CartViewModel : ViewModel() {
 
 class ChatViewModel : ViewModel() {
     private val repository = PizzaRepository()
-    private val sessionId = UUID.randomUUID().toString()
-    var messages by mutableStateOf<List<ChatMessage>>(listOf(ChatMessage("assistant", "Привет! Я WOKI 🍕")))
+    private var agentType by mutableStateOf("consultant")
+    private val sessionIds = mutableMapOf<String, String>()
+    var messages by mutableStateOf<List<ChatMessage>>(emptyList())
     var isTyping by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
+
+    init {
+        configureAgent("consultant")
+    }
+
+    fun configureAgent(type: String) {
+        if (agentType == type && messages.isNotEmpty()) {
+            return
+        }
+
+        agentType = type
+        messages = listOf(
+            ChatMessage(
+                "assistant",
+                if (type == "support") {
+                    "Привет! Я агент техподдержки. Помогу со статусом заказа, доставкой, адресом и самовывозом."
+                } else {
+                    "Привет! Я WOKI 🍕 Помогу по меню, рекомендациям и корзине."
+                }
+            )
+        )
+        sessionIds.putIfAbsent(type, UUID.randomUUID().toString())
+    }
 
     fun sendMessage(text: String, onSuccess: () -> Unit = {}) {
         if (text.isBlank()) return
@@ -179,7 +203,8 @@ class ChatViewModel : ViewModel() {
         messages = messages + ChatMessage("user", text)
         isTyping = true
         viewModelScope.launch {
-            val result = repository.sendChatMessage(text, sessionId)
+            val sessionId = sessionIds.getOrPut(agentType) { UUID.randomUUID().toString() }
+            val result = repository.sendChatMessage(text, sessionId, agentType)
             result.fold(
                 onSuccess = { response ->
                     messages = messages + ChatMessage("assistant", response)

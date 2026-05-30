@@ -17,6 +17,9 @@ def start_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="⭐ Отзыв", callback_data="nav_review"),
             InlineKeyboardButton(text="ℹ️ Помощь", callback_data="nav_help"),
         ],
+        [
+            InlineKeyboardButton(text="🛟 Техподдержка", callback_data="nav_support"),
+        ],
     ]
 
     if settings.tg_mini_app_url:

@@ -175,6 +175,11 @@ export const feedbackService = {
     return response.data
   },
 
+  async getProblematicSummary(params = {}) {
+    const response = await api.get('/api/feedback/admin/problematic-summary', { params })
+    return response.data
+  },
+
   async create(payload) {
     const response = await api.post('/api/feedback', payload)
     return response.data

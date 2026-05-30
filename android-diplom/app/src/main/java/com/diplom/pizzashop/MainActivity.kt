@@ -45,6 +45,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector,
     object Recommendations : Screen("recommendations", "Рекомендации", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome)
     object Cart : Screen("cart", "Корзина", Icons.Outlined.ShoppingCart, Icons.Filled.ShoppingCart)
     object More : Screen("more", "Ещё", Icons.Outlined.MoreHoriz, Icons.Filled.MoreHoriz)
+    object Support : Screen("support", "Поддержка", Icons.Outlined.SupportAgent, Icons.Filled.SupportAgent)
     object Login : Screen("login", "Вход", Icons.AutoMirrored.Outlined.Login, Icons.AutoMirrored.Filled.Login)
     object Register : Screen("register", "Регистрация", Icons.Outlined.PersonAdd, Icons.Filled.PersonAdd)
     object Checkout : Screen("checkout", "Оформление", Icons.AutoMirrored.Outlined.ReceiptLong, Icons.AutoMirrored.Filled.ReceiptLong)
@@ -106,7 +107,22 @@ fun PizzaApp() {
                 ) 
             }
             composable(Screen.AI.route) {
-                AIScreen(cartViewModel = cartViewModel)
+                AIScreen(
+                    agentType = "consultant",
+                    title = "WOKI AI",
+                    subtitle = "Меню, рекомендации и корзина",
+                    inputPlaceholder = "Спросите о пицце...",
+                    cartViewModel = cartViewModel
+                )
+            }
+            composable(Screen.Support.route) {
+                AIScreen(
+                    agentType = "support",
+                    title = "Техподдержка",
+                    subtitle = "Заказ, доставка и самовывоз",
+                    inputPlaceholder = "Где заказ, как добраться, как забрать...",
+                    cartViewModel = cartViewModel
+                )
             }
             composable(Screen.Recommendations.route) {
                 RecommendationsScreen(
@@ -149,6 +165,7 @@ fun PizzaApp() {
                     onNavigateToRegister = { navController.navigate(Screen.Register.route) },
                     onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                     onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                    onNavigateToSupport = { navController.navigate(Screen.Support.route) },
                     onNavigateToKitchen = { navController.navigate(Screen.Kitchen.route) },
                     onNavigateToDelivery = { navController.navigate(Screen.Delivery.route) },
                     onNavigateToAdminDashboard = { navController.navigate(Screen.AdminDashboard.route) },

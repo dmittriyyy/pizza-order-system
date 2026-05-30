@@ -14,6 +14,10 @@ from ..services.recommendation_service import RecommendationService
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
 
 
+def _build_agent_session_id(user_id: int, agent_type: str) -> str:
+    return f"{agent_type}:agent_{user_id}"
+
+
 @router.post("/consultant", response_model=ConsultantResponse)
 def consultant_agent(
     payload: dict,
@@ -25,17 +29,57 @@ def consultant_agent(
         raise HTTPException(status_code=400, detail="Сообщение пустое")
 
     chat_service = ChatService(db)
-    history = chat_service.get_user_history(user_id=current_user.id, limit=10)
+    session_id = _build_agent_session_id(current_user.id, "consultant")
+    history = chat_service.get_user_history(
+        user_id=current_user.id,
+        session_id=session_id,
+        limit=10,
+    )
     context = [{"message": item.message, "response": item.response} for item in history]
     response = chat_service.generate_response(
         message=message,
         context=context,
         user_id=current_user.id,
-        session_id=f"agent_{current_user.id}",
+        session_id=session_id,
+        agent_type="consultant",
     )
     chat_service.add_message(
         user_id=current_user.id,
-        session_id=f"agent_{current_user.id}",
+        session_id=session_id,
+        message=message,
+        response=response,
+    )
+    return {"response": response}
+
+
+@router.post("/support", response_model=ConsultantResponse)
+def support_agent(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    message = (payload or {}).get("message", "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Сообщение пустое")
+
+    chat_service = ChatService(db)
+    session_id = _build_agent_session_id(current_user.id, "support")
+    history = chat_service.get_user_history(
+        user_id=current_user.id,
+        session_id=session_id,
+        limit=10,
+    )
+    context = [{"message": item.message, "response": item.response} for item in history]
+    response = chat_service.generate_response(
+        message=message,
+        context=context,
+        user_id=current_user.id,
+        session_id=session_id,
+        agent_type="support",
+    )
+    chat_service.add_message(
+        user_id=current_user.id,
+        session_id=session_id,
         message=message,
         response=response,
     )

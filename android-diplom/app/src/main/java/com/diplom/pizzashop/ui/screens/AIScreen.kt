@@ -23,12 +23,20 @@ import com.diplom.pizzashop.ui.viewmodels.ChatViewModel
 
 @Composable
 fun AIScreen(
+    agentType: String = "consultant",
+    title: String = "WOKI AI",
+    subtitle: String = "Онлайн • Отвечает быстро",
+    inputPlaceholder: String = "Спросите о пицце...",
     viewModel: ChatViewModel = viewModel(),
     cartViewModel: CartViewModel
 ) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(agentType) {
+        viewModel.configureAgent(agentType)
+    }
 
     LaunchedEffect(viewModel.messages.size, viewModel.isTyping) {
         val lastIndex = viewModel.messages.lastIndex + if (viewModel.isTyping) 1 else 0
@@ -52,8 +60,8 @@ fun AIScreen(
                     Icon(Icons.Default.SmartToy, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(12.dp))
                     Column {
-                        Text("WOKI AI", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Онлайн • Отвечает быстро", color = Color.White.copy(0.8f), fontSize = 12.sp)
+                        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(subtitle, color = Color.White.copy(0.8f), fontSize = 12.sp)
                     }
                 }
             }
@@ -70,7 +78,7 @@ fun AIScreen(
                     TextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Спросите о пицце...", color = TextSecondary) },
+                        placeholder = { Text(inputPlaceholder, color = TextSecondary) },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,

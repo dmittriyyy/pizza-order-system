@@ -8,6 +8,8 @@ from .cartItem import CartItem
 from .chat_message import ChatMessage
 from .notification import Notification
 from .feedback import Feedback
+from .support_ticket import SupportTicket
+from .chat_checkout_state import ChatCheckoutState
 
 __all__ = [
     "Category",
@@ -22,4 +24,6 @@ __all__ = [
     "ChatMessage",
     "Notification",
     "Feedback",
+    "SupportTicket",
+    "ChatCheckoutState",
 ]

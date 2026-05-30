@@ -34,6 +34,7 @@ class AuthState:
 
 
 auth_states: dict[int, AuthState] = {}
+chat_modes: dict[int, str] = {}
 
 
 def _is_checkout_intent(text: str) -> bool:
@@ -103,10 +104,26 @@ async def start_handler(message: Message) -> None:
         "/cart — открыть корзину\n"
         "/checkout — оформить заказ\n"
         "/orders — последние заказы\n"
+        "/support_mode — агент техподдержки\n"
+        "/consultant_mode — консультант по меню\n"
         "/review — оставить отзыв\n"
         "/help — все возможности"
     )
     await message.answer(text, reply_markup=start_keyboard())
+
+
+@dp.message(Command("support_mode"))
+async def support_mode_handler(message: Message) -> None:
+    chat_modes[message.from_user.id] = "support"
+    await message.answer(
+        "Включен агент техподдержки. Если он не сможет точно ответить, он предупредит об этом и перенаправит вопрос администратору."
+    )
+
+
+@dp.message(Command("consultant_mode"))
+async def consultant_mode_handler(message: Message) -> None:
+    chat_modes[message.from_user.id] = "consultant"
+    await message.answer("Включен консультант по меню и заказу.")
 
 
 @dp.message(Command("link"))
@@ -207,10 +224,36 @@ async def help_handler(message: Message) -> None:
         "/status — последний заказ\n"
         "/review — оставить отзыв\n"
         "/recommend — персональные рекомендации\n"
+        "/support_mode — переключиться на техподдержку\n"
+        "/consultant_mode — переключиться на консультанта\n"
+        "/support_tickets — список обращений поддержки для админа\n"
+        "/reply_ticket <id> <текст> — ответить клиенту по обращению\n"
         "/link — привязать существующий аккаунт\n"
         "/register — создать аккаунт\n"
         "/unlink — снять привязку"
     )
+
+
+@dp.message(Command("support_tickets"))
+async def support_tickets_handler(message: Message) -> None:
+    await message.answer(service.list_open_support_tickets(message.from_user.id))
+
+
+@dp.message(Command("reply_ticket"))
+async def reply_ticket_handler(message: Message) -> None:
+    raw_text = (message.text or "").strip()
+    parts = raw_text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Формат: /reply_ticket <id> <текст ответа>")
+        return
+
+    try:
+        ticket_id = int(parts[1])
+    except ValueError:
+        await message.answer("ID обращения должен быть числом.")
+        return
+
+    await message.answer(service.reply_support_ticket(message.from_user.id, ticket_id, parts[2]))
 
 
 @dp.message(Command("checkout"))
@@ -417,6 +460,15 @@ async def callback_handler(callback: CallbackQuery) -> None:
         await callback.answer()
         return
 
+    if data == "nav_support":
+        chat_modes[user_id] = "support"
+        await callback.message.answer(
+            "Включен агент техподдержки. Если он не сможет точно ответить, он предупредит об этом и перенаправит вопрос администратору.",
+            reply_markup=start_keyboard(),
+        )
+        await callback.answer()
+        return
+
     if data.startswith("review_rate:"):
         _, order_id_raw, rating_raw = data.split(":")
         if not state or state.mode != "review":
@@ -583,12 +635,14 @@ async def chat_handler(message: Message) -> None:
         await begin_checkout_flow(message)
         return
 
+    agent_type = chat_modes.get(message.from_user.id, "consultant")
     response = service.chat(
         message.from_user.id,
         message.text,
         username=message.from_user.username,
         first_name=message.from_user.first_name,
         last_name=message.from_user.last_name,
+        agent_type=agent_type,
     )
     await message.answer(response)
 

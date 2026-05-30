@@ -5,11 +5,11 @@
         <div class="bg-gradient-to-r from-primary-500 to-primary-600 p-5">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-              <span class="text-2xl">🤖</span>
+              <span class="text-2xl">🛟</span>
             </div>
             <div>
-              <h1 class="text-white font-bold text-2xl">WOKI</h1>
-              <p class="text-white/70 text-sm">AI-помощник по меню и заказам</p>
+              <h1 class="text-white font-bold text-2xl">Техподдержка</h1>
+              <p class="text-white/70 text-sm">Статус заказа, адрес, доставка и самовывоз</p>
             </div>
           </div>
         </div>
@@ -45,7 +45,7 @@
             <input
               v-model="newMessage"
               type="text"
-              placeholder="Спроси про меню, калории или добавление в корзину..."
+              placeholder="Где заказ, как добраться, как забрать заказ..."
               class="flex-1 glass px-4 py-3 rounded-[20px] text-white placeholder-gray-400 focus:outline-none"
             />
             <button type="submit" class="btn-primary px-5 py-3">Отправить</button>
@@ -64,7 +64,7 @@ const isTyping = ref(false)
 const newMessage = ref('')
 const messagesContainer = ref(null)
 const messages = ref([
-  { role: 'assistant', content: 'Привет! Я WOKI 🍕 Могу подсказать по меню, подобрать блюдо и помочь добавить товар в корзину.' }
+  { role: 'assistant', content: 'Привет! Я агент техподдержки. Помогу со статусом заказа, доставкой, адресом и самовывозом.' }
 ])
 
 const scrollToBottom = async () => {
@@ -84,13 +84,14 @@ const sendMessage = async () => {
   scrollToBottom()
 
   try {
-    const sessionId = localStorage.getItem('chat_session_id') || `session_${Date.now()}`
-    localStorage.setItem('chat_session_id', sessionId)
+    const sessionStorageKey = 'chat_session_id_support'
+    const sessionId = localStorage.getItem(sessionStorageKey) || `session_support_${Date.now()}`
+    localStorage.setItem(sessionStorageKey, sessionId)
 
     const response = await api.post('/api/chat/send', {
       message: content,
       session_id: sessionId,
-      agent_type: 'consultant',
+      agent_type: 'support',
     }, {
       timeout: 180000,
     })
@@ -100,7 +101,7 @@ const sendMessage = async () => {
       content: response.data.response,
     })
   } catch (error) {
-    console.error('Ошибка чата:', error)
+    console.error('Ошибка чата поддержки:', error)
     messages.value.push({
       role: 'assistant',
       content: 'Сейчас не получилось ответить. Попробуй ещё раз через пару секунд.',

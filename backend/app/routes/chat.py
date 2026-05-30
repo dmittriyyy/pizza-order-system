@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 class ChatMessageRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    agent_type: str = "consultant"
 
 
 class ChatMessageResponse(BaseModel):
@@ -33,7 +34,8 @@ def send_message(
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     user_id = current_user.id if current_user else None
-    session_id = request.session_id or f"anon_{uuid.uuid4()}"
+    raw_session_id = request.session_id or f"anon_{uuid.uuid4()}"
+    session_id = f"{request.agent_type}:{raw_session_id}"
 
     chat_service = ChatService(db)
     history = chat_service.get_user_history(user_id, session_id, limit=20)
@@ -44,7 +46,8 @@ def send_message(
         message=request.message,
         context=context,
         user_id=user_id,
-        session_id=session_id
+        session_id=session_id,
+        agent_type=request.agent_type,
     )
 
     chat_service.add_message(
@@ -64,12 +67,14 @@ def send_message(
 @router.get("/history", response_model=ChatHistoryResponse)
 def get_chat_history(
     session_id: Optional[str] = None,
+    agent_type: str = "consultant",
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     user_id = current_user.id if current_user else None
-    session_id = session_id or f"anon_{uuid.uuid4()}"
+    raw_session_id = session_id or f"anon_{uuid.uuid4()}"
+    session_id = f"{agent_type}:{raw_session_id}"
 
     chat_service = ChatService(db)
     history = chat_service.get_user_history(user_id, session_id, limit)
@@ -89,11 +94,13 @@ def get_chat_history(
 @router.delete("/clear")
 def clear_chat_history(
     session_id: Optional[str] = None,
+    agent_type: str = "consultant",
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     user_id = current_user.id if current_user else None
-    session_id = session_id or f"anon_{uuid.uuid4()}"
+    raw_session_id = session_id or f"anon_{uuid.uuid4()}"
+    session_id = f"{agent_type}:{raw_session_id}"
 
     chat_service = ChatService(db)
     count = chat_service.clear_history(user_id, session_id)

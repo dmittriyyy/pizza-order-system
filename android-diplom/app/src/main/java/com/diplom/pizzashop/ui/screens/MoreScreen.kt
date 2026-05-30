@@ -25,6 +25,7 @@ fun MoreScreen(
     onNavigateToRegister: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToAbout: () -> Unit,
+    onNavigateToSupport: () -> Unit,
     onNavigateToKitchen: () -> Unit = {},
     onNavigateToDelivery: () -> Unit = {},
     onNavigateToAdminDashboard: () -> Unit = {},
@@ -81,6 +82,9 @@ fun MoreScreen(
             // Профиль
             item {
                 MoreCard(icon = Icons.Default.Person, title = "Профиль", subtitle = "Личные данные и заказы", onClick = onNavigateToProfile)
+            }
+            item {
+                MoreCard(icon = Icons.Default.SupportAgent, title = "Техподдержка", subtitle = "Статус заказа, адрес и доставка", onClick = onNavigateToSupport)
             }
             item {
                 MoreCard(icon = Icons.Default.Info, title = "О нас", subtitle = "Информация о Piazza Pizza", onClick = onNavigateToAbout)

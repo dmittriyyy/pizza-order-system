@@ -8,7 +8,12 @@
 
       <button type="button" class="mini-dock-item" :class="{ 'mini-dock-item--active': isRouteActive('/mini-ai') }" @click="goToAI">
         <span class="mini-dock-icon">🤖</span>
-        <span class="mini-dock-label">AI</span>
+        <span class="mini-dock-label">Консультант</span>
+      </button>
+
+      <button type="button" class="mini-dock-item" :class="{ 'mini-dock-item--active': isRouteActive('/mini-support') }" @click="goToSupport">
+        <span class="mini-dock-icon">🛟</span>
+        <span class="mini-dock-label">Поддержка</span>
       </button>
 
       <button type="button" class="mini-dock-item mini-dock-item--cart" :class="{ 'mini-dock-item--active': cartStore.isOpen }" @click="openCart">
@@ -49,6 +54,10 @@ const goToAI = async () => {
   await router.push('/mini-ai')
 }
 
+const goToSupport = async () => {
+  await router.push('/mini-support')
+}
+
 const openCart = async () => {
   if (!authStore.isAuthenticated) {
     await router.push('/login')
@@ -75,7 +84,7 @@ const goToMore = async () => {
 
 .mini-dock {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   padding: 10px;
   border-radius: 30px;

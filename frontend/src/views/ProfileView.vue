@@ -93,7 +93,7 @@
 
             <div v-else class="space-y-4">
               <div
-                v-for="order in orders"
+                v-for="order in visibleOrders"
                 :key="order.id"
                 class="glass p-4 rounded-2xl"
               >
@@ -158,6 +158,15 @@
                   <p class="text-green-400 text-xs">Отзыв по этому заказу уже оставлен.</p>
                 </div>
               </div>
+
+              <button
+                v-if="orders.length > VISIBLE_ORDERS_LIMIT && !showAllOrders"
+                type="button"
+                class="w-full glass rounded-2xl px-4 py-3 text-sm font-semibold text-primary-400 hover:text-primary-300 transition-colors"
+                @click="showAllOrders = true"
+              >
+                Посмотреть все заказы
+              </button>
             </div>
           </div>
         </div>
@@ -245,10 +254,12 @@ const isSaving = ref(false)
 const feedbackModalOpen = ref(false)
 const selectedOrder = ref(null)
 const isSubmittingFeedback = ref(false)
+const showAllOrders = ref(false)
 const feedbackForm = reactive({
   rating: 5,
   comment: '',
 })
+const VISIBLE_ORDERS_LIMIT = 3
 
 const telegramRuntimeUsername = computed(() => {
   const username = getTelegramWebApp()?.initDataUnsafe?.user?.username
@@ -267,6 +278,12 @@ const displayLogin = computed(() => {
   }
   return userProfile.value.login || 'Пользователь'
 })
+
+const visibleOrders = computed(() => (
+  showAllOrders.value
+    ? orders.value
+    : orders.value.slice(0, VISIBLE_ORDERS_LIMIT)
+))
 
 const translateRole = (role) => {
   const roles = {
@@ -368,7 +385,8 @@ const fetchOrders = async () => {
   isLoading.value = true
   try {
     const response = await api.get('/api/orders')
-    orders.value = response.data
+    orders.value = [...response.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    showAllOrders.value = false
   } catch (error) {
     console.error('Ошибка при загрузке заказов:', error)
     if ((error.response?.status === 401 || error.response?.data?.detail === 'Пользователь не найден') && await tryRecoverTelegramSession()) {

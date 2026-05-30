@@ -122,9 +122,13 @@ class PizzaRepository {
 
     // ==================== ЧАТ ====================
 
-    suspend fun sendChatMessage(message: String, sessionId: String): Result<String> {
+    suspend fun sendChatMessage(
+        message: String,
+        sessionId: String,
+        agentType: String = "consultant"
+    ): Result<String> {
         return try {
-            val response = api.sendChatMessage(ChatRequest(message, sessionId))
+            val response = api.sendChatMessage(ChatRequest(message, sessionId, agentType))
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {

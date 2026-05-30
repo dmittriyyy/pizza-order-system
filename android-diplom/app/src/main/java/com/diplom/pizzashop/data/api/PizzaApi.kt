@@ -168,7 +168,11 @@ interface PizzaApi {
 
 // ==================== DTO ====================
 
-data class ChatRequest(val message: String, val session_id: String)
+data class ChatRequest(
+    val message: String,
+    val session_id: String,
+    val agent_type: String = "consultant"
+)
 data class ChatResponse(val message: String, val response: String, val timestamp: String)
 
 data class CreateOrderRequest(

@@ -10,6 +10,7 @@ from .bootstrap import BACKEND_DIR
 from app.database import SessionLocal
 from app.models import Cart, CartItem, Feedback, Order, Product, User
 from app.models.order import OrderStatus
+from app.models.users import UserRole
 from app.repositories.cart_repository import CartRepository
 from app.repositories.order_repository import OrderRepository
 from app.services.auth_service import AuthService
@@ -19,6 +20,7 @@ from app.services.ollama_service import ollama_service
 from app.services.order_service import OrderService
 from app.services.order_tracking_service import OrderTrackingService
 from app.services.recommendation_service import RecommendationService
+from app.services.support_ticket_service import SupportTicketService
 from app.services.telegram_auth_service import TelegramAuthService
 from app.schemas.feedback import FeedbackCreate
 from app.schemas.user import UserCreate
@@ -249,11 +251,19 @@ class TelegramPizzaService:
         lines.append("В чате можешь писать свободно: например, «посоветуй острую пиццу» или «добавь пепперони»")
         return "\n".join(lines)
 
-    def chat(self, telegram_user_id: int, text: str, username: str | None = None, first_name: str | None = None, last_name: str | None = None) -> str:
+    def chat(
+        self,
+        telegram_user_id: int,
+        text: str,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        agent_type: str = "consultant",
+    ) -> str:
         db = SessionLocal()
         try:
             user_id = self._get_or_create_user_id(telegram_user_id, username, first_name, last_name)
-            session_id = self._session_id(telegram_user_id)
+            session_id = f"{agent_type}:{self._session_id(telegram_user_id)}"
             chat_service = ChatService(db)
             history = chat_service.get_user_history(user_id=user_id, session_id=session_id, limit=20)
             context = [{"message": item.message, "response": item.response} for item in history]
@@ -263,6 +273,7 @@ class TelegramPizzaService:
                 context=context,
                 user_id=user_id,
                 session_id=session_id,
+                agent_type=agent_type,
             )
             chat_service.add_message(
                 user_id=user_id,
@@ -271,6 +282,49 @@ class TelegramPizzaService:
                 response=response,
             )
             return response
+        finally:
+            db.close()
+
+    def is_admin(self, telegram_user_id: int) -> bool:
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.telegram_id == str(telegram_user_id)).first()
+            return bool(user and user.role == UserRole.admin)
+        finally:
+            db.close()
+
+    def list_open_support_tickets(self, telegram_user_id: int, limit: int = 10) -> str:
+        if not self.is_admin(telegram_user_id):
+            return "Команда доступна только администратору."
+
+        db = SessionLocal()
+        try:
+            tickets = SupportTicketService(db).list_open_tickets(limit=limit)
+            if not tickets:
+                return "Открытых обращений поддержки нет."
+
+            lines = ["Открытые обращения поддержки:"]
+            for ticket in tickets:
+                author = ticket.user.login if ticket.user else f"user:{ticket.user_id}"
+                lines.append(
+                    f"• #{ticket.id} [{ticket.status}] {author}: {ticket.user_message[:120]}"
+                )
+            lines.append("")
+            lines.append("Ответ: /reply_ticket <id> <текст>")
+            return "\n".join(lines)
+        finally:
+            db.close()
+
+    def reply_support_ticket(self, telegram_user_id: int, ticket_id: int, message: str) -> str:
+        if not self.is_admin(telegram_user_id):
+            return "Команда доступна только администратору."
+
+        db = SessionLocal()
+        try:
+            ticket = SupportTicketService(db).reply_to_ticket(ticket_id, message)
+            if not ticket:
+                return f"Обращение #{ticket_id} не найдено."
+            return f"Ответ по обращению #{ticket_id} отправлен клиенту."
         finally:
             db.close()
 
