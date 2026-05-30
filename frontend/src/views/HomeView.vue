@@ -57,7 +57,7 @@
     </section>
 
     <!-- Преимущества -->
-    <section class="py-16 px-4">
+    <section v-if="!isTelegramMiniApp" class="py-16 px-4">
       <div class="max-w-7xl mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div class="premium-card p-8 text-center">
