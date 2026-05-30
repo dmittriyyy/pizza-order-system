@@ -3,8 +3,16 @@
     <div class="max-w-4xl mx-auto">
       <div class="mb-6">
         <h1 class="text-4xl font-bold text-white">Ещё</h1>
-        <p class="text-dark-400 mt-2">Профиль, вход, заказы и дополнительная информация.</p>
+        <p class="text-dark-400 mt-2">Профиль, поддержка, заказы и дополнительная информация.</p>
       </div>
+
+      <button class="mini-more-card mb-4" @click="router.push('/mini-support')">
+        <span class="mini-more-icon">🛟</span>
+        <span>
+          <span class="mini-more-title">Техподдержка</span>
+          <span class="mini-more-subtitle">Статус заказа, доставка, адрес и самовывоз</span>
+        </span>
+      </button>
 
       <div v-if="!authStore.isAuthenticated" class="space-y-4">
         <button class="btn-primary w-full py-4 text-lg" @click="router.push('/login')">
